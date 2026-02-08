@@ -1,0 +1,22 @@
+name: PR Review Mention
+on:
+  pull_request:
+    types: [review_requested]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Mention to Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          case "${{ github.event.requested_reviewer.login }}" in
+            "hlum · he/him") DISCORD_ID="580330579678199809" ;;
+            *) DISCORD_ID="" ;;
+          esac
+
+          if [ -n "$DISCORD_ID" ]; then
+            MESSAGE="<@$DISCORD_ID> さん、PR作成しました！お手隙に確認お願いします!\n${{ github.event.pull_request.html_url }}"
+            curl -H "Content-Type: application/json" -X POST -d "{\"content\": \"$MESSAGE\"}" $DISCORD_WEBHOOK
+          fi
