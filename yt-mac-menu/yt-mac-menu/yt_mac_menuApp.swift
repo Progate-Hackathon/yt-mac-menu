@@ -10,8 +10,7 @@ import SwiftUI
 @main
 struct yt_mac_menuApp: App {
     var body: some Scene {
-        WindowGroup {
-            ContentView()
+        MenuBarExtra("yt-mac-menu", systemImage: "star.fill") {
         }
     }
 }
