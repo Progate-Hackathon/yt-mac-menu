@@ -11,6 +11,12 @@ import SwiftUI
 struct yt_mac_menuApp: App {
     var body: some Scene {
         MenuBarExtra("yt-mac-menu", systemImage: "star.fill") {
+            Button("設定") {
+            }
+            Divider()
+            Button("終了") {
+                NSApplication.shared.terminate(nil)
+            }
         }
     }
 }
