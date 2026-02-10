@@ -8,5 +8,8 @@ struct SettingsView: View {
         }
         .frame(width: 480)
         .padding()
+        .onAppear {
+            NSApp.activate()
+        }
     }
 }
