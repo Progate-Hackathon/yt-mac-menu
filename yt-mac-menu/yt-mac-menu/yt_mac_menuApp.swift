@@ -11,9 +11,7 @@ import SwiftUI
 struct yt_mac_menuApp: App {
     var body: some Scene {
         MenuBarExtra("yt-mac-menu", systemImage: "star.fill") {
-            Button("Settings") {
-            }
-            SettingsLink() //下のSettingsを呼ぶ
+            SettingsLink()
             Divider()
             Button("Quit") {
                 NSApplication.shared.terminate(nil)
