@@ -32,10 +32,10 @@ class GestureCameraViewModel: ObservableObject {
                 self.showWindow()
                 self.startSession()
             case .success:
+                self.stopSession()
                 self.showWindow()
                 self.scheduleAutoReset()
             case .waiting:
-                self.stopSession()
                 self.closeWindow()
             }
         }
@@ -80,13 +80,13 @@ class GestureCameraViewModel: ObservableObject {
         
         self.monitorWindow = newWindow
     }
-
+    
     private func scheduleAutoReset() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
             self?.appState = .waiting
         }
     }
-
+    
     
     private func startSession() {
         sessionQueue.async { [weak self] in
@@ -120,14 +120,17 @@ class GestureCameraViewModel: ObservableObject {
             guard let self = self else { return }
             self.session.beginConfiguration()
             
+            var inputAdded = false
+            
             if let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
                let input = try? AVCaptureDeviceInput(device: device),
                self.session.canAddInput(input) {
                 self.session.addInput(input)
+                inputAdded = true
             }
             
             self.session.commitConfiguration()
-            DispatchQueue.main.async { self.permissionGranted = true }
+            DispatchQueue.main.async { self.permissionGranted = inputAdded }
         }
     }
 }
