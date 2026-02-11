@@ -3,7 +3,9 @@ import AVFoundation
 
 
 struct GestureCameraView: View {
-    @ObservedObject var gestureCameraViewModel: GestureCameraViewModel
+    
+    @StateObject private var gestureCameraViewModel = GestureCameraViewModel()
+    @Environment(\.dismiss) var dismiss
     
     var body: some View {
         ZStack {
@@ -23,6 +25,11 @@ struct GestureCameraView: View {
         }
         .frame(width: 320, height: 240)
         .background(.regularMaterial)
+        .onChange(of: gestureCameraViewModel.appState) { oldValue, newValue in
+            if newValue == .waiting {
+                dismiss()
+            }
+        }
     }
 }
 
