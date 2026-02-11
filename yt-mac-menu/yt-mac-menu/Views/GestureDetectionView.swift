@@ -1,0 +1,58 @@
+import SwiftUI
+
+struct GestureDetectionView: View {
+    @ObservedObject var viewModel: GestureDetectionViewModel
+    
+    var body: some View {
+        ZStack {
+            switch viewModel.appState {
+            case .detecting:
+                DetectingStateView()
+            case .success:
+                StatusFeedbackSectionView(
+                    title: "送信完了しました",
+                    subtitle: "3秒後に閉じます...",
+                    iconName: "checkmark.circle.fill",
+                    color: .green
+                )
+            case .waiting:
+                EmptyView()
+            }
+        }
+        .frame(width: 320, height: 240)
+        .background(.regularMaterial)
+    }
+}
+
+
+struct DetectingStateView: View {
+    @State private var isAnimating = false
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .stroke(Color.blue.opacity(0.2), lineWidth: 4)
+                    .frame(width: 60, height: 60)
+                
+                Circle()
+                    .trim(from: 0, to: 0.25)
+                    .stroke(Color.blue, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                    .frame(width: 60, height: 60)
+                    .rotationEffect(Angle(degrees: isAnimating ? 360 : 0))
+                    .animation(.linear(duration: 1).repeatForever(autoreverses: false), value: isAnimating)
+            }
+            .onAppear { isAnimating = true }
+            
+            Text("ジェスチャーを検知中...")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.secondary)
+            
+            Text("カメラに向かって🫶ジェスチャーをしてください")
+                .font(.system(size: 11))
+                .foregroundColor(.gray)
+        }
+    }
+}
+
+
