@@ -27,7 +27,7 @@ struct GestureCameraView: View {
                 }
             }
         }
-        .frame(width: 320, height: 240)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.regularMaterial)
         .onChange(of: gestureCameraViewModel.appState) { oldValue, newValue in
             if newValue == .waiting {
