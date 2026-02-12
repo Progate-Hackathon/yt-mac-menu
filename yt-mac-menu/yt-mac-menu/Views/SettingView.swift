@@ -1,13 +1,4 @@
 import SwiftUI
-import Combine
-
-class SettingsViewModel: ObservableObject {
-    @Published var selectedProjectPath: String = ""
-    @Published var githubToken: String = ""
-    
-    @Published var settingChanged: Bool = false // 設定変更されたか
-}
-
 
 struct SettingsView: View {
     @StateObject private var settingsViewModel = SettingsViewModel()
