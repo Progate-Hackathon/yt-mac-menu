@@ -5,12 +5,11 @@ class AppViewModel: ObservableObject {
     private let service = GestureService.shared
     
     @Published var isCameraVisible: Bool = false
-    private var cancellables = Set<AnyCancellable>() // 購読を保持するゴミ箱のようなもの
+    private var cancellables = Set<AnyCancellable>()
     
     init() {
         setupBindings()
         service.connect()
-        service.sendCommand("enable_snap")
     }
     
     private func setupBindings() {
@@ -22,10 +21,14 @@ class AppViewModel: ObservableObject {
                 switch event {
                 case .connected:
                     self.service.sendCommand("enable_snap")
+                case .disconnected:
+                    self.isCameraVisible = false
                 case .snapDetected:
                     self.service.sendCommand("disable_snap")
                     self.service.sendCommand("enable_heart")
                     self.isCameraVisible = true
+                case .heartDetected:
+                    self.isCameraVisible = false
                 default:
                     break
                 }
