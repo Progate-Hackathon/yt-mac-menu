@@ -40,8 +40,8 @@ class CameraWindowController: NSObject, NSWindowDelegate {
         newWindow.level = .floating
         newWindow.isReleasedWhenClosed = false
         
-//        newWindow.contentView = NSHostingView(rootView: GestureCameraView())
-        newWindow.contentView = NSHostingView(rootView: GestureDetectionView())
+        newWindow.contentView = NSHostingView(rootView: GestureCameraView())
+//        newWindow.contentView = NSHostingView(rootView: GestureDetectionView())
         
         newWindow.delegate = self
         newWindow.makeKeyAndOrderFront(nil)
