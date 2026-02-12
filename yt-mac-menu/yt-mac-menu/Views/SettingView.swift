@@ -1,10 +1,20 @@
 import SwiftUI
+import Combine
+
+class SettingsViewModel: ObservableObject {
+    @Published var selectedProjectPath: String = ""
+    @Published var githubToken: String = ""
+    
+    @Published var settingChanged: Bool = false // 設定変更されたか
+}
+
 
 struct SettingsView: View {
+    @StateObject private var settingsViewModel = SettingsViewModel()
     var body: some View {
         VStack {
-            ProjectPathSectionView()
-            GitHubTokenSectionView() //まだissue-#4のプルリクが通ってないのでファイルが見つからずエラーが出ますが許してください
+            ProjectPathSectionView(selectedProjectPath: $settingsViewModel.selectedProjectPath)
+            GitHubTokenSectionView(gitHubAccessToken: $settingsViewModel.githubToken)
         }
         .frame(width: 480)
         .padding()
@@ -12,4 +22,9 @@ struct SettingsView: View {
             NSApp.activate()
         }
     }
+}
+
+
+#Preview {
+    SettingsView()
 }
