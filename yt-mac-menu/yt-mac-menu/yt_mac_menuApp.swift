@@ -9,18 +9,22 @@ import SwiftUI
 
 @main
 struct yt_mac_menuApp: App {
-
+    @StateObject private var appViewModel = AppViewModel()
+    
     var body: some Scene {
         MenuBarExtra("yt-mac-menu", systemImage: "star.fill") {
-            Button("(プレビューあり)検知開始をシミュレート") {
-                CameraWindowController.shared.open()
-            }
             SettingsLink()
             Divider()
             Button("Quit") {
                 NSApplication.shared.terminate(nil)
             }
         }
+        .onChange(of: appViewModel.isCameraVisible) { oldValue, newValue in
+            if newValue {
+                CameraWindowController.shared.open()
+            }
+        }
+        
         Settings {
             SettingsView()
         }
