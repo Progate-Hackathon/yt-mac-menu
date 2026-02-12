@@ -14,6 +14,7 @@ class SettingsViewModel: ObservableObject {
     
     @Published var settingChanged: Bool = false // 設定変更されたか
     @Published var settingErrorMessage: String?
+    @Published var isSaving = false
 
     private var cancellables = Set<AnyCancellable>() // Combineの購読を管理するためのセット
     
@@ -21,10 +22,33 @@ class SettingsViewModel: ObservableObject {
         self.addListenerToSettingFields()
     }
     
+    
+    func saveSetting() async {
+        isSaving = true
+        defer { isSaving = false }
+        
+        guard settingChanged else { return }
+        guard projectPathIsValid() else { return }
+        guard await githubTokenIsValid() else { return }
+
+        UserDefaultUtility.shared.save(key: .PROJECT_FOLDER_PATH_KEY, value: selectedProjectPath)
+        UserDefaultUtility.shared.save(key: .GITHUB_TOKEN_KEY, value: githubToken)
+        
+        // 設定がちゃんと保存された時
+        settingErrorMessage = nil
+        settingChanged = false
+    }
+    
+    
+    
     private func addListenerToSettingFields() {
         // 設定の変更を検知する
         Publishers.CombineLatest($selectedProjectPath, $githubToken)
-            .debounce(for: 1, scheduler: DispatchQueue.main) // 変更されて１秒経ってない間でまだ変更されたら、sinkへ行かないように
+            .removeDuplicates { lhs, rhs in
+                lhs.0 == rhs.0 && lhs.1 == rhs.1
+            }
+            .debounce(for: 0.5, scheduler: DispatchQueue.main) // 変更されて１秒経ってない間でまだ変更されたら、sinkへ行かないように
+        
             .sink { [weak self] _ in
                 
                 guard let self = self else { return }
