@@ -41,7 +41,8 @@ class CameraWindowController: NSObject, NSWindowDelegate {
         newWindow.isReleasedWhenClosed = false
         newWindow.backgroundColor = .clear
         
-        newWindow.contentView = NSHostingView(rootView: GestureCameraView())
+//        newWindow.contentView = NSHostingView(rootView: GestureCameraView())
+        newWindow.contentView = NSHostingView(rootView: GestureDetectionView())
         
         newWindow.delegate = self
         newWindow.makeKeyAndOrderFront(nil)

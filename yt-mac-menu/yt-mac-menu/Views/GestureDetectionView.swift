@@ -1,11 +1,11 @@
 import SwiftUI
 
 struct GestureDetectionView: View {
-    @ObservedObject var viewModel: GestureDetectionViewModel
+    @StateObject private var gestureDetectionViewModel = GestureDetectionViewModel()
     
     var body: some View {
         ZStack {
-            switch viewModel.appState {
+            switch gestureDetectionViewModel.appState {
             case .detecting:
                 DetectingStateView()
             case .success:

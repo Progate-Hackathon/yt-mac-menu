@@ -3,11 +3,8 @@ import Combine
 import SwiftUI
 
 class GestureDetectionViewModel: ObservableObject {
-    
     @Published var appState: AppStatus = .waiting {
-        didSet {
-            handleStateChange(appState)
-        }
+        didSet { handleStateChange(appState) }
     }
     private var monitorWindow: NSWindow?
     private var webSocketTask: URLSessionWebSocketTask?
@@ -21,6 +18,8 @@ class GestureDetectionViewModel: ObservableObject {
     init() {
         // 必要ならここで接続開始
         // connectWebSocket()
+        // テスト用に初期状態をdetectingに設定
+        self.appState = .detecting
     }
     
     private func handleStateChange(_ state: AppStatus) {
@@ -29,14 +28,11 @@ class GestureDetectionViewModel: ObservableObject {
             
             switch state {
             case .detecting:
-                self.showWindow()
-                
+                break
             case .success:
-                self.showWindow()
                 self.scheduleAutoReset()
-                
             case .waiting:
-                self.closeWindow()
+                break
             }
         }
     }
@@ -45,50 +41,6 @@ class GestureDetectionViewModel: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
             self?.appState = .waiting
         }
-    }
-    
-    private func showWindow() {
-        if let existingWindow = monitorWindow {
-            existingWindow.makeKeyAndOrderFront(nil)
-            return
-        }
-        
-        createAndDisplayWindow()
-    }
-    
-    private func closeWindow() {
-        monitorWindow?.close()
-        monitorWindow = nil
-    }
-    
-    private func createAndDisplayWindow() {
-        guard let screen = NSScreen.main else { return }
-        
-        let windowWidth: CGFloat = 320
-        let windowHeight: CGFloat = 240
-        let padding: CGFloat = 16
-        
-        let screenRect = screen.visibleFrame
-        let xPos = screenRect.maxX - windowWidth - padding
-        let yPos = screenRect.maxY - windowHeight - padding
-        
-        let newWindow = NSWindow(
-            contentRect: NSRect(x: xPos, y: yPos, width: windowWidth, height: windowHeight),
-            styleMask: [.titled, .closable, .fullSizeContentView], // 枠なし
-            backing: .buffered,
-            defer: false
-        )
-        
-        newWindow.titleVisibility = .hidden
-        newWindow.titlebarAppearsTransparent = true
-        newWindow.level = .floating
-        newWindow.isReleasedWhenClosed = false
-        
-        newWindow.contentView = NSHostingView(rootView: GestureDetectionView(viewModel: self))
- 
-        newWindow.makeKeyAndOrderFront(nil)
-
-        self.monitorWindow = newWindow
     }
     
     private func connectWebSocket() {
