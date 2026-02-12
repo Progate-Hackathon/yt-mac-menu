@@ -38,9 +38,11 @@ class SettingsViewModel: ObservableObject {
         settingErrorMessage = nil
         settingChanged = false
     }
-    
-    
-    
+ 
+}
+
+
+private extension SettingsViewModel {
     private func addListenerToSettingFields() {
         // 設定の変更を検知する
         Publishers.CombineLatest($selectedProjectPath, $githubToken)
@@ -115,6 +117,4 @@ class SettingsViewModel: ObservableObject {
     private func showSettingError(_ errorMessage: String) {
         settingErrorMessage = errorMessage
     }
-    
-    
 }
