@@ -36,7 +36,7 @@ class SettingsViewModel: ObservableObject {
     
     
     
-    private func checkProjectPath() -> Bool {
+    private func projectPathIsValid() -> Bool {
         guard !selectedProjectPath.isEmpty else {
             showSettingError("プロジェクトパスが空です")
             return false
@@ -68,9 +68,19 @@ class SettingsViewModel: ObservableObject {
     }
 
     
-    
-    private func checkGithubToken() {
+    @MainActor
+    private func githubTokenIsValid() async -> Bool{
+        do {
+            return try await GithubTokenValidator.shared.isValidToken(githubToken)
+        } catch GitHubTokenError.network(let networkError) {
+            showSettingError("ネットワークの問題が発生しました。やり直してください。")
+            print("Tokenの検証に失敗(NetworkError): \(networkError.localizedDescription)")
+        } catch {
+            showSettingError("エラーが発生しました。やり直してください。")
+            print("Tokenの検証に失敗: \(error.localizedDescription)")
+        }
         
+        return false
     }
     
     
