@@ -9,9 +9,11 @@ import SwiftUI
 
 @main
 struct yt_mac_menuApp: App {
-
     var body: some Scene {
         MenuBarExtra("yt-mac-menu", systemImage: "star.fill") {
+            Button("(プレビューなし)検知開始をシミュレート") {
+                CameraWindowController.shared.open()
+            }
             Button("(プレビューあり)検知開始をシミュレート") {
                 CameraWindowController.shared.open()
             }
