@@ -19,6 +19,7 @@ class SettingsViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>() // Combineの購読を管理するためのセット
     
     init() {
+        self.loadSavedSettings()
         self.addListenerToSettingFields()
     }
     
@@ -59,6 +60,13 @@ private extension SettingsViewModel {
             .store(in: &cancellables)
     }
 
+    
+    
+    @MainActor
+    private func loadSavedSettings() {
+        self.githubToken = UserDefaultUtility.shared.get(key: .GITHUB_TOKEN_KEY) ?? ""
+        self.selectedProjectPath = UserDefaultUtility.shared.get(key: .PROJECT_FOLDER_PATH_KEY) ?? ""
+    }
     
     
     
