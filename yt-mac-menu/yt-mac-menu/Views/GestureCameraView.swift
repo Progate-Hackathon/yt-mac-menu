@@ -9,10 +9,7 @@ struct GestureCameraView: View {
         ZStack {
             switch gestureCameraViewModel.appState {
             case .detecting:
-                ActiveCameraView(
-                    session: gestureCameraViewModel.session,
-                    permissionGranted: gestureCameraViewModel.permissionGranted
-                )
+                ActiveCameraView(session: gestureCameraViewModel.session)
             case .success:
                 StatusFeedbackSectionView(
                     title: "送信完了しました",
@@ -22,6 +19,12 @@ struct GestureCameraView: View {
                 )
             case .waiting:
                 EmptyView()
+            case .unauthorized:
+                VStack {
+                    Image(systemName: "video.slash")
+                        .font(.largeTitle)
+                    Text("カメラの権限が必要です")
+                }
             }
         }
         .frame(width: 320, height: 240)
@@ -37,29 +40,18 @@ struct GestureCameraView: View {
 
 struct ActiveCameraView: View {
     let session: AVCaptureSession
-    let permissionGranted: Bool
     
     var body: some View {
-        VStack {
-            if permissionGranted {
-                ZStack(alignment: .bottom) {
-                    CameraPreviewView(session: session)
-                        .cornerRadius(12)
-                        .padding(10)
-                    
-                    Text("カメラに向かってジェスチャー🫶をしてください")
-                        .padding(8)
-                        .background(.ultraThinMaterial)
-                        .cornerRadius(8)
-                        .padding(.bottom, 20)
-                }
-            } else {
-                VStack {
-                    Image(systemName: "video.slash")
-                        .font(.largeTitle)
-                    Text("カメラの権限が必要です")
-                }
-            }
+        ZStack(alignment: .bottom) {
+            CameraPreviewView(session: session)
+                .cornerRadius(12)
+                .padding(10)
+            
+            Text("カメラに向かってジェスチャー🫶をしてください")
+                .padding(8)
+                .background(.ultraThinMaterial)
+                .cornerRadius(8)
+                .padding(.bottom, 20)
         }
     }
 }
