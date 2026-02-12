@@ -42,7 +42,7 @@ final class GithubTokenValidator {
             }
             
         } catch {
-            throw GitHubTokenError.network(error)
+            throw error
         }
     }
 
