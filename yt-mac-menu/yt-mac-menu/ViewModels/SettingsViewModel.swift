@@ -89,7 +89,7 @@ class SettingsViewModel: ObservableObject {
     
     @MainActor
     private func showSettingError(_ errorMessage: String) {
-        
+        settingErrorMessage = errorMessage
     }
     
     
