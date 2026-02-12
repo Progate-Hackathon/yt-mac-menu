@@ -2,8 +2,7 @@ import SwiftUI
 
 struct GitHubTokenSectionView: View {
     
-    // 後で暗号化処理に渡す想定
-    @State private var gitHubAccessToken: String = ""
+    @Binding var gitHubAccessToken: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -24,5 +23,6 @@ struct GitHubTokenSectionView: View {
 }
 
 #Preview {
-    GitHubTokenSectionView()
+    @Previewable @State var githubAccessToken = ""
+    GitHubTokenSectionView(gitHubAccessToken: $githubAccessToken)
 }

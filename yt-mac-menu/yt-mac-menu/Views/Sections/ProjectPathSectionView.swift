@@ -2,8 +2,8 @@ import SwiftUI
 import AppKit
 
 struct ProjectPathSectionView: View {
-    
-    @AppStorage("projectPath") private var selectedProjectPath: String = "" // gitのプロジェクトパス
+
+    @Binding var selectedProjectPath: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -41,5 +41,6 @@ private extension ProjectPathSectionView {
 }
 
 #Preview {
-    ProjectPathSectionView()
+    @Previewable @State var selectedProjectPath: String = ""
+    ProjectPathSectionView(selectedProjectPath: $selectedProjectPath)
 }
