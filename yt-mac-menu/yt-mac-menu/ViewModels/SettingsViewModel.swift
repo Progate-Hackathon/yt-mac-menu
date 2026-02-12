@@ -75,9 +75,11 @@ class SettingsViewModel: ObservableObject {
         } catch GitHubTokenError.network(let networkError) {
             showSettingError("ネットワークの問題が発生しました。やり直してください。")
             print("Tokenの検証に失敗(NetworkError): \(networkError.localizedDescription)")
-        } catch {
+        } catch GitHubTokenError.invalidResponse {
             showSettingError("エラーが発生しました。やり直してください。")
-            print("Tokenの検証に失敗: \(error.localizedDescription)")
+            print("Tokenの検証に失敗: Invalid Response")
+        } catch {
+            showSettingError("無効なトークンです。")
         }
         
         return false
