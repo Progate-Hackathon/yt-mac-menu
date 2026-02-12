@@ -22,6 +22,8 @@ struct yt_mac_menuApp: App {
         .onChange(of: appViewModel.isCameraVisible) { _, newValue in
             if newValue {
                 CameraWindowController.shared.open()
+            } else {
+                CameraWindowController.shared.close()
             }
         }
         
