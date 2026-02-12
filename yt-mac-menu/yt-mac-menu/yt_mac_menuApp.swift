@@ -19,7 +19,7 @@ struct yt_mac_menuApp: App {
                 gestureDetectionViewModel.appState = .detecting
             }
             Button("(プレビューあり)検知開始をシミュレート") {
-                gestureCameraViewModel.appState = .detecting
+                CameraWindowController.shared.open()
             }
             SettingsLink()
             Divider()
