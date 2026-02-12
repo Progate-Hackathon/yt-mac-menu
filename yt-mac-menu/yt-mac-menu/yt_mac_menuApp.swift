@@ -9,13 +9,11 @@ import SwiftUI
 
 @main
 struct yt_mac_menuApp: App {
-    
-    @StateObject private var gestureCameraViewModel = GestureCameraViewModel()
 
     var body: some Scene {
         MenuBarExtra("yt-mac-menu", systemImage: "star.fill") {
             Button("(プレビューあり)検知開始をシミュレート") {
-                gestureCameraViewModel.appState = .detecting
+                CameraWindowController.shared.open()
             }
             SettingsLink()
             Divider()
