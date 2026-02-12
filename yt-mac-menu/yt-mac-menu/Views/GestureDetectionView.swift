@@ -19,7 +19,7 @@ struct GestureDetectionView: View {
                 EmptyView()
             }
         }
-        .frame(width: 320, height: 240)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.regularMaterial)
     }
 }
