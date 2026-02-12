@@ -3,7 +3,6 @@ import SwiftUI
 import Combine
 
 class GestureCameraViewModel: ObservableObject {
-    
     @Published var appState: AppStatus = .waiting {
         didSet { handleStateChange(appState) }
     }

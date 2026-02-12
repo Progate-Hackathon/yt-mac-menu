@@ -1,9 +1,7 @@
 import SwiftUI
 import AVFoundation
 
-
 struct GestureCameraView: View {
-    
     @StateObject private var gestureCameraViewModel = GestureCameraViewModel()
     @Environment(\.dismiss) var dismiss
     
@@ -11,7 +9,10 @@ struct GestureCameraView: View {
         ZStack {
             switch gestureCameraViewModel.appState {
             case .detecting:
-                ActiveCameraView(gestureCameraViewModel: gestureCameraViewModel)
+                ActiveCameraView(
+                    session: gestureCameraViewModel.session,
+                    permissionGranted: gestureCameraViewModel.permissionGranted
+                )
             case .success:
                 StatusFeedbackSectionView(
                     title: "送信完了しました",
@@ -35,13 +36,14 @@ struct GestureCameraView: View {
 
 
 struct ActiveCameraView: View {
-    @ObservedObject var gestureCameraViewModel: GestureCameraViewModel
+    let session: AVCaptureSession
+    let permissionGranted: Bool
     
     var body: some View {
         VStack {
-            if gestureCameraViewModel.permissionGranted {
+            if permissionGranted {
                 ZStack(alignment: .bottom) {
-                    CameraPreviewView(session: gestureCameraViewModel.session)
+                    CameraPreviewView(session: session)
                         .cornerRadius(12)
                         .padding(10)
                     
@@ -72,8 +74,12 @@ struct CameraPreviewView: NSViewRepresentable {
         
         let previewLayer = AVCaptureVideoPreviewLayer(session: session)
         previewLayer.videoGravity = .resizeAspectFill
-        // ウィンドウのリサイズに追従させる
         previewLayer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
+        
+        if previewLayer.connection?.isVideoMirroringSupported == true {
+            previewLayer.connection?.automaticallyAdjustsVideoMirroring = false
+            previewLayer.connection?.isVideoMirrored = true
+        }
         
         view.layer = previewLayer
         return view
