@@ -19,7 +19,7 @@ struct yt_mac_menuApp: App {
                 NSApplication.shared.terminate(nil)
             }
         }
-        .onChange(of: appViewModel.isCameraVisible) { oldValue, newValue in
+        .onChange(of: appViewModel.isCameraVisible) { _, newValue in
             if newValue {
                 CameraWindowController.shared.open()
             }
