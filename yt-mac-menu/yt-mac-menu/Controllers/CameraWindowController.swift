@@ -39,9 +39,9 @@ class CameraWindowController: NSObject, NSWindowDelegate {
         newWindow.titlebarAppearsTransparent = true
         newWindow.level = .floating
         newWindow.isReleasedWhenClosed = false
-        newWindow.backgroundColor = .clear
         
-        newWindow.contentView = NSHostingView(rootView: GestureCameraView())
+//        newWindow.contentView = NSHostingView(rootView: GestureCameraView())
+        newWindow.contentView = NSHostingView(rootView: GestureDetectionView())
         
         newWindow.delegate = self
         newWindow.makeKeyAndOrderFront(nil)
