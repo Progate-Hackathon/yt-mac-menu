@@ -6,7 +6,6 @@ class GestureCameraViewModel: ObservableObject {
     @Published var appState: AppStatus = .waiting {
         didSet { handleStateChange(appState) }
     }
-    @Published var permissionGranted = false
     @Published var session = AVCaptureSession()
     
     private let sessionQueue = DispatchQueue(label: "com.myapp.cameraSessionQueue")
@@ -15,6 +14,7 @@ class GestureCameraViewModel: ObservableObject {
         case waiting
         case detecting
         case success
+        case unauthorized
     }
     
     init() {
@@ -31,6 +31,8 @@ class GestureCameraViewModel: ObservableObject {
                 self.stopSession()
                 self.scheduleAutoReset()
             case .waiting:
+                self.stopSession()
+            case .unauthorized:
                 self.stopSession()
             }
         }
@@ -62,32 +64,50 @@ class GestureCameraViewModel: ObservableObject {
             setupSession()
         case .notDetermined:
             AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
-                if granted { self?.setupSession() }
+                if granted {
+                    self?.setupSession()
+                } else {
+                    DispatchQueue.main.async {
+                        self?.appState = .unauthorized
+                    }
+                }
             }
         default:
-            DispatchQueue.main.async { self.permissionGranted = false }
+            DispatchQueue.main.async {
+                self.appState = .unauthorized
+            }
         }
     }
     
     private func setupSession() {
         sessionQueue.async { [weak self] in
             guard let self = self else { return }
+            
+            if !self.session.inputs.isEmpty {
+                DispatchQueue.main.async { self.appState = .detecting }
+                return
+            }
+            
             self.session.beginConfiguration()
             
-            var inputAdded = false
+            var isSuccess = false
             
             if let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
                let input = try? AVCaptureDeviceInput(device: device),
                self.session.canAddInput(input) {
+                
                 self.session.addInput(input)
-                inputAdded = true
+                isSuccess = true
             }
             
             self.session.commitConfiguration()
+            
             DispatchQueue.main.async {
-                self.permissionGranted = inputAdded
-                if inputAdded { self.appState = .detecting }
-                
+                if isSuccess {
+                    self.appState = .detecting
+                } else {
+                    self.appState = .unauthorized
+                }
             }
         }
     }
