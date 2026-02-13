@@ -20,19 +20,28 @@ class AppViewModel: ObservableObject {
                 
                 switch event {
                 case .connected:
-                    self.service.sendCommand("enable_snap")
+                    self.service.sendCommand(.enableSnap)
                 case .disconnected:
                     self.isCameraVisible = false
                 case .snapDetected:
-                    self.service.sendCommand("disable_snap")
-                    self.service.sendCommand("enable_heart")
+                    self.service.sendCommand(.disableSnap)
+                    self.service.sendCommand(.enableHeart)
                     self.isCameraVisible = true
                 case .heartDetected:
-                    self.isCameraVisible = false
+                    self.service.sendCommand(.disableHeart)
+                    scheduleAutoReset {
+                        self.service.sendCommand(.enableSnap)
+                    }
                 default:
                     break
                 }
             }
             .store(in: &cancellables)
+    }
+    private func scheduleAutoReset(onComplete: (() -> Void)? = nil) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+            self?.isCameraVisible = false
+            onComplete?()
+        }
     }
 }

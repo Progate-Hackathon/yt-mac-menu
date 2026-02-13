@@ -3,7 +3,6 @@ import AVFoundation
 
 struct GestureCameraView: View {
     @StateObject private var gestureCameraViewModel = GestureCameraViewModel()
-    @Environment(\.dismiss) var dismiss
     
     var body: some View {
         ZStack {
@@ -18,7 +17,12 @@ struct GestureCameraView: View {
                     color: .green
                 )
             case .waiting:
-                EmptyView()
+                StatusFeedbackSectionView(
+                    title: "読み込み中です",
+                    subtitle: "しばらくお待ちください...",
+                    iconName: "hourglass",
+                    color: .gray
+                )
             case .unauthorized:
                 VStack {
                     Image(systemName: "video.slash")
@@ -29,11 +33,6 @@ struct GestureCameraView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.regularMaterial)
-        .onChange(of: gestureCameraViewModel.appState) { oldValue, newValue in
-            if newValue == .waiting {
-                dismiss()
-            }
-        }
     }
 }
 

@@ -78,8 +78,8 @@ class GestureService: ObservableObject {
         }
     }
     
-    func sendCommand(_ command: String) {
-        let jsonString = "{\"command\": \"\(command)\"}"
+    func sendCommand(_ command: GestureCommand) {
+        let jsonString = "{\"command\": \"\(command.rawValue)\"}"
         let message = URLSessionWebSocketTask.Message.string(jsonString)
         
         webSocketTask?.send(message) { error in
