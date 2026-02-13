@@ -20,17 +20,17 @@ class AppViewModel: ObservableObject {
                 
                 switch event {
                 case .connected:
-                    self.service.sendCommand("enable_snap")
+                    self.service.sendCommand(.enableSnap)
                 case .disconnected:
                     self.isCameraVisible = false
                 case .snapDetected:
-                    self.service.sendCommand("disable_snap")
-                    self.service.sendCommand("enable_heart")
+                    self.service.sendCommand(.disableSnap)
+                    self.service.sendCommand(.enableHeart)
                     self.isCameraVisible = true
                 case .heartDetected:
-                    self.service.sendCommand("disable_heart")
+                    self.service.sendCommand(.disableHeart)
                     scheduleAutoReset {
-                        self.service.sendCommand("enable_snap")
+                        self.service.sendCommand(.enableSnap)
                     }
                 default:
                     break
