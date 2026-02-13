@@ -28,11 +28,18 @@ class AppViewModel: ObservableObject {
                     self.service.sendCommand("enable_heart")
                     self.isCameraVisible = true
                 case .heartDetected:
-                    self.isCameraVisible = false
+                    self.service.sendCommand("disable_heart")
+                    scheduleAutoReset()
+                    self.service.sendCommand("enable_snap")
                 default:
                     break
                 }
             }
             .store(in: &cancellables)
+    }
+    private func scheduleAutoReset() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+            self?.isCameraVisible = false
+        }
     }
 }

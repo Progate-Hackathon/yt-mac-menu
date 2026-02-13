@@ -6,6 +6,7 @@ class CameraWindowController: NSObject, NSWindowDelegate {
     private let service = GestureService.shared
     
     private var window: NSWindow?
+    private var isProgrammaticClose = false
     
     private override init() {
         super.init()
@@ -50,11 +51,17 @@ class CameraWindowController: NSObject, NSWindowDelegate {
         self.window = newWindow
     }
     func close() {
+        isProgrammaticClose = true
         window?.close()
     }
     
     func windowWillClose(_ notification: Notification) {
-        service.disconnect()
+        if isProgrammaticClose {
+            isProgrammaticClose = false
+            
+        } else {
+            service.disconnect()
+        }
         window = nil
     }
 }
