@@ -36,7 +36,7 @@ class GestureService: ObservableObject {
         webSocketTask?.resume()
         print("GestureService: 接続開始...")
         
-        sendPingToConfirmConnection()
+        establishConnection()
     }
     
     func disconnect() {
@@ -56,11 +56,11 @@ class GestureService: ObservableObject {
         DispatchQueue.main.async {
             self.isConnected = false
             self.eventSubject.send(.disconnected)
-            self.attemptReconnect()
+            self.scheduleReconnection()
         }
     }
     
-    private func sendPingToConfirmConnection() {
+    private func establishConnection() {
         webSocketTask?.sendPing { [weak self] error in
             guard let self = self else { return }
             
@@ -140,7 +140,7 @@ class GestureService: ObservableObject {
         }
     }
     
-    private func attemptReconnect() {
+    private func scheduleReconnection() {
         let delay = min(pow(2.0, Double(retryAttempt)), maxRetryInterval)
         print("再接続を試みます... (\(Int(delay))秒後 / 試行回数: \(retryAttempt + 1))")
 
