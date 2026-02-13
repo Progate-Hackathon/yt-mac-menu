@@ -3,6 +3,7 @@ import SwiftUI
 
 class CameraWindowController: NSObject, NSWindowDelegate {
     static let shared = CameraWindowController()
+    private let service = GestureService.shared
     
     private var window: NSWindow?
     
@@ -24,7 +25,7 @@ class CameraWindowController: NSObject, NSWindowDelegate {
         let height: CGFloat = 240
         
         let padding: CGFloat = 5
-
+        
         let xPos = screenRect.maxX - width - padding
         let yPos = screenRect.maxY - height - padding
         
@@ -40,16 +41,20 @@ class CameraWindowController: NSObject, NSWindowDelegate {
         newWindow.level = .floating
         newWindow.isReleasedWhenClosed = false
         
-//        newWindow.contentView = NSHostingView(rootView: GestureCameraView())
-        newWindow.contentView = NSHostingView(rootView: GestureDetectionView())
+        newWindow.contentView = NSHostingView(rootView: GestureCameraView())
+        //        newWindow.contentView = NSHostingView(rootView: GestureDetectionView())
         
         newWindow.delegate = self
         newWindow.makeKeyAndOrderFront(nil)
         
         self.window = newWindow
     }
+    func close() {
+        window?.close()
+    }
     
     func windowWillClose(_ notification: Notification) {
+        service.disconnect()
         window = nil
     }
 }
