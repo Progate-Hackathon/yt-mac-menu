@@ -4,9 +4,9 @@ import SwiftUI
 
 class GestureDetectionViewModel: ObservableObject {
     @Published var detectionState: DetectionStatus = .waiting
-    private var cancellables = Set<AnyCancellable>()
     
-    private let service = GestureService.shared
+    private let gestureUseCase: GestureDetectionUseCase
+    private var cancellables = Set<AnyCancellable>()
     
     enum DetectionStatus: String {
         case waiting
@@ -15,12 +15,13 @@ class GestureDetectionViewModel: ObservableObject {
         case unauthorized
     }
     
-    init() {
+    init(gestureUseCase: GestureDetectionUseCase) {
+        self.gestureUseCase = gestureUseCase
         setupBindings()
     }
     
     private func setupBindings() {
-        service.eventSubject
+        gestureUseCase.gestureEventPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] event in
                 guard let self = self else { return }

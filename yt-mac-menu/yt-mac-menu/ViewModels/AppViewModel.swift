@@ -1,47 +1,26 @@
-import AVFoundation
+import Foundation
 import Combine
 
 class AppViewModel: ObservableObject {
-    private let service = GestureService.shared
-    
     @Published var isCameraVisible: Bool = false
+    @Published var currentState: AppState = .idle
+    
+    private let coordinator: AppCoordinator
     private var cancellables = Set<AnyCancellable>()
     
-    init() {
+    init(coordinator: AppCoordinator) {
+        self.coordinator = coordinator
         setupBindings()
-        service.connect()
+        coordinator.start()
     }
     
     private func setupBindings() {
-        service.eventSubject
+        coordinator.$isCameraVisible
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] event in
-                guard let self = self else { return }
-                
-                switch event {
-                case .connected:
-                    self.service.sendCommand(.enableSnap)
-                case .disconnected:
-                    self.isCameraVisible = false
-                case .snapDetected:
-                    self.service.sendCommand(.disableSnap)
-                    self.service.sendCommand(.enableHeart)
-                    self.isCameraVisible = true
-                case .heartDetected:
-                    self.service.sendCommand(.disableHeart)
-                    scheduleAutoReset {
-                        self.service.sendCommand(.enableSnap)
-                    }
-                default:
-                    break
-                }
-            }
-            .store(in: &cancellables)
-    }
-    private func scheduleAutoReset(onComplete: (() -> Void)? = nil) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
-            self?.isCameraVisible = false
-            onComplete?()
-        }
+            .assign(to: &$isCameraVisible)
+        
+        coordinator.$currentState
+            .receive(on: DispatchQueue.main)
+            .assign(to: &$currentState)
     }
 }

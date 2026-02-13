@@ -3,7 +3,6 @@ import SwiftUI
 
 class CameraWindowController: NSObject, NSWindowDelegate {
     static let shared = CameraWindowController()
-    private let service = GestureService.shared
     
     private var window: NSWindow?
     private var isProgrammaticClose = false
@@ -43,25 +42,24 @@ class CameraWindowController: NSObject, NSWindowDelegate {
         newWindow.isReleasedWhenClosed = false
         
         newWindow.contentView = NSHostingView(rootView: GestureCameraView())
-        //        newWindow.contentView = NSHostingView(rootView: GestureDetectionView())
         
         newWindow.delegate = self
         newWindow.makeKeyAndOrderFront(nil)
         
         self.window = newWindow
     }
+    
     func close() {
         isProgrammaticClose = true
         window?.close()
     }
     
     func windowWillClose(_ notification: Notification) {
-        if isProgrammaticClose {
-            isProgrammaticClose = false
-            
-        } else {
-            service.disconnect()
+        if !isProgrammaticClose {
+            let coordinator = DependencyContainer.shared.makeAppCoordinator()
+            coordinator.stop()
         }
+        isProgrammaticClose = false
         window = nil
     }
 }
