@@ -1,7 +1,12 @@
 import SwiftUI
 
 struct GestureDetectionView: View {
-    @StateObject private var gestureDetectionViewModel = GestureDetectionViewModel()
+    @StateObject private var gestureDetectionViewModel: GestureDetectionViewModel
+    
+    init() {
+        let gestureUseCase = DependencyContainer.shared.makeGestureDetectionUseCase()
+        _gestureDetectionViewModel = StateObject(wrappedValue: GestureDetectionViewModel(gestureUseCase: gestureUseCase))
+    }
     
     var body: some View {
         ZStack {
