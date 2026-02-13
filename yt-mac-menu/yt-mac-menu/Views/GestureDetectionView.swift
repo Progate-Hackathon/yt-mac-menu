@@ -5,7 +5,7 @@ struct GestureDetectionView: View {
     
     var body: some View {
         ZStack {
-            switch gestureDetectionViewModel.appState {
+            switch gestureDetectionViewModel.detectionState {
             case .detecting:
                 DetectingStateView()
             case .success:

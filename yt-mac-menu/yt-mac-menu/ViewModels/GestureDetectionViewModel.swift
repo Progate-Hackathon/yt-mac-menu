@@ -3,12 +3,12 @@ import Combine
 import SwiftUI
 
 class GestureDetectionViewModel: ObservableObject {
-    @Published var appState: AppStatus = .waiting
+    @Published var detectionState: DetectionStatus = .waiting
     private var cancellables = Set<AnyCancellable>()
     
     private let service = GestureService.shared
     
-    enum AppStatus: String {
+    enum DetectionStatus: String {
         case waiting
         case detecting
         case success
@@ -26,9 +26,9 @@ class GestureDetectionViewModel: ObservableObject {
                 guard let self = self else { return }
                 switch event {
                 case .snapDetected:
-                    self.appState = .detecting
+                    self.detectionState = .detecting
                 case .heartDetected:
-                    self.appState = .success
+                    self.detectionState = .success
                 default:
                     break
                 }

@@ -21,19 +21,19 @@ struct SettingsView: View {
     
     @ViewBuilder
     private var errorMessage: some View {
-        if let errorMessage = settingsViewModel.settingErrorMessage {
-            Text(errorMessage)
+        if let message = settingsViewModel.errorMessage {
+            Text(message)
                 .foregroundStyle(.red)
         }
     }
     
     @ViewBuilder
     private var saveButton: some View {
-        let buttonIsDisabled = settingsViewModel.isSaving || !settingsViewModel.settingChanged
+        let buttonIsDisabled = settingsViewModel.isSaving || !settingsViewModel.hasUnsavedChanges
         Button {
             Task {
-                await settingsViewModel.saveSetting()
-                NSApp.keyWindow?.makeFirstResponder(nil) // 入力フィールドからFocusを消す
+                await settingsViewModel.saveSettings()
+                NSApp.keyWindow?.makeFirstResponder(nil)
             }
 
         } label: {

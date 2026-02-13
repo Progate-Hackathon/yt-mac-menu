@@ -12,50 +12,48 @@ class SettingsViewModel: ObservableObject {
     @Published var selectedProjectPath: String = ""
     @Published var githubToken: String = ""
     
-    @Published var settingChanged: Bool = false // 設定変更されたか
-    @Published var settingErrorMessage: String?
+    @Published var hasUnsavedChanges: Bool = false
+    @Published var errorMessage: String?
     @Published var isSaving = false
 
-    private var cancellables = Set<AnyCancellable>() // Combineの購読を管理するためのセット
+    private var cancellables = Set<AnyCancellable>()
     
     init() {
-        self.loadSavedSettings()
-        self.addListenerToSettingFields()
+        self.loadSettings()
+        self.observeSettingChanges()
     }
     
     
-    func saveSetting() async {
+    func saveSettings() async {
         isSaving = true
         defer { isSaving = false }
         
-        guard settingChanged else { return }
-        guard projectPathIsValid() else { return }
-        guard await githubTokenIsValid() else { return }
+        guard hasUnsavedChanges else { return }
+        guard isProjectPathValid() else { return }
+        guard await isGitHubTokenValid() else { return }
 
-        UserDefaultUtility.shared.save(key: .PROJECT_FOLDER_PATH_KEY, value: selectedProjectPath)
-        UserDefaultUtility.shared.save(key: .GITHUB_TOKEN_KEY, value: githubToken)
+        UserDefaultUtility.shared.save(key: .githubToken, value: githubToken)
+        UserDefaultUtility.shared.save(key: .projectFolderPath, value: selectedProjectPath)
         
-        // 設定がちゃんと保存された時
-        settingErrorMessage = nil
-        settingChanged = false
+        errorMessage = nil
+        hasUnsavedChanges = false
     }
  
 }
 
 
 private extension SettingsViewModel {
-    private func addListenerToSettingFields() {
-        // 設定の変更を検知する
+    private func observeSettingChanges() {
         Publishers.CombineLatest($selectedProjectPath, $githubToken)
             .removeDuplicates { lhs, rhs in
                 lhs.0 == rhs.0 && lhs.1 == rhs.1
             }
-            .debounce(for: 0.5, scheduler: DispatchQueue.main) // 変更されて１秒経ってない間でまだ変更されたら、sinkへ行かないように
+            .debounce(for: 0.5, scheduler: DispatchQueue.main)
         
             .sink { [weak self] _ in
                 
                 guard let self = self else { return }
-                settingChanged = true
+                hasUnsavedChanges = true
             }
             .store(in: &cancellables)
     }
@@ -63,16 +61,16 @@ private extension SettingsViewModel {
     
     
     @MainActor
-    private func loadSavedSettings() {
-        self.githubToken = UserDefaultUtility.shared.get(key: .GITHUB_TOKEN_KEY) ?? ""
-        self.selectedProjectPath = UserDefaultUtility.shared.get(key: .PROJECT_FOLDER_PATH_KEY) ?? ""
+    private func loadSettings() {
+        self.githubToken = UserDefaultUtility.shared.get(key: .githubToken) ?? ""
+        self.selectedProjectPath = UserDefaultUtility.shared.get(key: .projectFolderPath) ?? ""
     }
     
     
     
-    private func projectPathIsValid() -> Bool {
+    private func isProjectPathValid() -> Bool {
         guard !selectedProjectPath.isEmpty else {
-            showSettingError("プロジェクトパスが空です")
+            showError("プロジェクトパスが空です")
             return false
         }
         
@@ -80,12 +78,12 @@ private extension SettingsViewModel {
         var isDirectory: ObjCBool = false
         
         guard fileManager.fileExists(atPath: selectedProjectPath, isDirectory: &isDirectory) else {
-            showSettingError("指定されたパスは存在しません")
+            showError("指定されたパスは存在しません")
             return false
         }
         
         guard isDirectory.boolValue else {
-            showSettingError("指定されたパスはフォルダではありません")
+            showError("指定されたパスはフォルダではありません")
             return false
         }
         
@@ -94,7 +92,7 @@ private extension SettingsViewModel {
         
         guard fileManager.fileExists(atPath: gitPath, isDirectory: &isGitDirectory),
               isGitDirectory.boolValue else {
-            showSettingError("このフォルダはGitリポジトリではありません")
+            showError("このフォルダはGitリポジトリではありません")
             return false
         }
         
@@ -103,17 +101,17 @@ private extension SettingsViewModel {
 
     
     @MainActor
-    private func githubTokenIsValid() async -> Bool{
+    private func isGitHubTokenValid() async -> Bool{
         do {
             return try await GithubTokenValidator.shared.isValidToken(githubToken)
         } catch GitHubTokenError.network(let networkError) {
-            showSettingError("ネットワークの問題が発生しました。やり直してください。")
+            showError("ネットワークの問題が発生しました。やり直してください。")
             print("Tokenの検証に失敗(NetworkError): \(networkError.localizedDescription)")
         } catch GitHubTokenError.invalidResponse {
-            showSettingError("エラーが発生しました。やり直してください。")
+            showError("エラーが発生しました。やり直してください。")
             print("Tokenの検証に失敗: Invalid Response")
         } catch {
-            showSettingError("無効なトークンです。")
+            showError("無効なトークンです。")
         }
         
         return false
@@ -122,7 +120,7 @@ private extension SettingsViewModel {
     
     
     @MainActor
-    private func showSettingError(_ errorMessage: String) {
-        settingErrorMessage = errorMessage
+    private func showError(_ message: String) {
+        errorMessage = message
     }
 }

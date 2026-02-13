@@ -8,8 +8,8 @@
 import Foundation
 
 enum UserDefaultKeys: String {
-    case GITHUB_TOKEN_KEY
-    case PROJECT_FOLDER_PATH_KEY
+    case githubToken
+    case projectFolderPath
 }
 
 final class UserDefaultUtility {
@@ -27,7 +27,7 @@ final class UserDefaultUtility {
         if let savedValue {
             return savedValue
         } else {
-            print("キー：\(key.rawValue)の の値は保存されていません")
+            print("キー：\(key.rawValue)の値は保存されていません")
             return nil
         }
     }
