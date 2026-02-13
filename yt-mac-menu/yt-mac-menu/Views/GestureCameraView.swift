@@ -17,7 +17,12 @@ struct GestureCameraView: View {
                     color: .green
                 )
             case .waiting:
-                EmptyView()
+                StatusFeedbackSectionView(
+                    title: "読み込み中です",
+                    subtitle: "しばらくお待ちください...",
+                    iconName: "hourglass",
+                    color: .gray
+                )
             case .unauthorized:
                 VStack {
                     Image(systemName: "video.slash")
