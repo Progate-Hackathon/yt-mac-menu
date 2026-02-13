@@ -5,7 +5,4 @@ enum GestureCommand: String {
     case disableSnap = "disable_snap"
     case enableHeart = "enable_heart"
     case disableHeart = "disable_heart"
-    case enableTest = "enable_test"
-    case disableTest = "disable_test"
-    
 }
