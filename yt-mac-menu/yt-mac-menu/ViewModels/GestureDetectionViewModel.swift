@@ -16,8 +16,6 @@ class GestureDetectionViewModel: ObservableObject {
     }
     
     init() {
-        // テスト用に初期状態をdetectingに設定
-        self.appState = .detecting
         setupBindings()
     }
     
@@ -27,6 +25,8 @@ class GestureDetectionViewModel: ObservableObject {
             .sink { [weak self] event in
                 guard let self = self else { return }
                 switch event {
+                case .snapDetected:
+                    self.appState = .detecting
                 case .heartDetected:
                     self.appState = .success
                 default:
