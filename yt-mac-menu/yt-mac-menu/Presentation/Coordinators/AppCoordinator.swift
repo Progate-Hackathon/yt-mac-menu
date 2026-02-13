@@ -1,0 +1,117 @@
+import Foundation
+import Combine
+
+class AppCoordinator: ObservableObject {
+    @Published private(set) var currentState: AppState = .idle
+    @Published private(set) var isCameraVisible: Bool = false
+    
+    private let gestureRepository: GestureRepositoryProtocol
+    private var cancellables = Set<AnyCancellable>()
+    private var resetWorkItem: DispatchWorkItem?
+    
+    init(gestureRepository: GestureRepositoryProtocol) {
+        self.gestureRepository = gestureRepository
+        setupBindings()
+    }
+    
+    func start() {
+        gestureRepository.connect()
+    }
+    
+    func stop() {
+        gestureRepository.disconnect()
+        transition(to: .idle)
+    }
+    
+    private func setupBindings() {
+        gestureRepository.eventPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] event in
+                self?.handleGestureEvent(event)
+            }
+            .store(in: &cancellables)
+    }
+    
+    private func handleGestureEvent(_ event: GestureEvent) {
+        switch event {
+        case .connected:
+            handleConnected()
+        case .disconnected:
+            handleDisconnected()
+        case .snapDetected:
+            handleSnapDetected()
+        case .heartDetected:
+            handleHeartDetected()
+        case .handCount:
+            break
+        }
+    }
+    
+    private func handleConnected() {
+        print("AppCoordinator: WebSocket接続完了")
+        transition(to: .listeningForSnap)
+        gestureRepository.sendCommand(.enableSnap)
+    }
+    
+    private func handleDisconnected() {
+        print("AppCoordinator: WebSocket切断")
+        transition(to: .idle)
+        isCameraVisible = false
+    }
+    
+    private func handleSnapDetected() {
+        guard currentState == .listeningForSnap else {
+            print("AppCoordinator: スナップ検出されましたが、状態が不正です (\(currentState.description))")
+            return
+        }
+        
+        print("AppCoordinator: スナップ検出 → ハート検出モードへ移行")
+        transition(to: .snapDetected)
+        
+        gestureRepository.sendCommand(.disableSnap)
+        gestureRepository.sendCommand(.enableHeart)
+        
+        isCameraVisible = true
+        transition(to: .detectingHeart)
+    }
+    
+    private func handleHeartDetected() {
+        guard currentState == .detectingHeart else {
+            print("AppCoordinator: ハート検出されましたが、状態が不正です (\(currentState.description))")
+            return
+        }
+        
+        print("AppCoordinator: ハート検出 → 成功状態へ移行")
+        transition(to: .heartDetected)
+        
+        gestureRepository.sendCommand(.disableHeart)
+        
+        scheduleReset()
+    }
+    
+    private func scheduleReset() {
+        resetWorkItem?.cancel()
+        
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self = self else { return }
+            print("AppCoordinator: リセット → スナップ待機モードへ")
+            
+            self.transition(to: .resetting)
+            self.isCameraVisible = false
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                self.transition(to: .listeningForSnap)
+                self.gestureRepository.sendCommand(.enableSnap)
+            }
+        }
+        
+        resetWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0, execute: workItem)
+    }
+    
+    private func transition(to newState: AppState) {
+        let oldState = currentState
+        currentState = newState
+        print("AppCoordinator: 状態遷移: \(oldState.description) → \(newState.description)")
+    }
+}
