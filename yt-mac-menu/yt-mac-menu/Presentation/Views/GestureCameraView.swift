@@ -18,7 +18,7 @@ struct GestureCameraView: View {
         ZStack {
             switch gestureCameraViewModel.appState {
             case .detecting:
-                ActiveCameraView(session: gestureCameraViewModel.session)
+                    ActiveCameraView(session: gestureCameraViewModel.session, detectedHandCount: $gestureCameraViewModel.detectedHandCount)
             case .success:
                 StatusFeedbackSectionView(
                     title: "送信完了しました",
@@ -50,27 +50,75 @@ struct GestureCameraView: View {
 struct ActiveCameraView: View {
     let session: AVCaptureSession
     @State private var triggerUpdate = false
+    @Binding var detectedHandCount: Int
     
     var body: some View {
-        ZStack(alignment: .bottom) {
+        ZStack {
+            // Camera
             CameraPreviewView(session: session, triggerUpdate: triggerUpdate)
-                .cornerRadius(12)
-                .padding(10)
+                .ignoresSafeArea()
                 .onAppear {
-                    // セッション開始を待ってからミラーリングをトリガー
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                         triggerUpdate.toggle()
                     }
                 }
             
-            Text("カメラに向かってジェスチャー🫶をしてください")
-                .padding(8)
-                .background(.ultraThinMaterial)
-                .cornerRadius(8)
-                .padding(.bottom, 20)
+            // Overlay UI
+            VStack {
+                Spacer()
+                
+                statusCard
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 30)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .animation(.easeInOut(duration: 0.3), value: detectedHandCount)
+            }
+        }
+    }
+    
+    // MARK: - Status Card
+    
+    private var statusCard: some View {
+        let (text, icon, color) = statusInfo
+        
+        return HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.title2)
+            
+            Text(text)
+                .font(.headline)
+                .multilineTextAlignment(.leading)
+        }
+        .foregroundColor(.white)
+        .padding()
+        .frame(maxWidth: .infinity)
+        .frame(height: 30)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(color.opacity(0.85))
+        )
+    }
+    
+    private var statusInfo: (String, String, Color) {
+        switch detectedHandCount {
+        case 0:
+            return ("手をカメラの前に出してください",
+                    "camera.viewfinder",
+                    .red)
+            
+        case 1:
+            return ("もう片方の手を追加してください",
+                    "hand.raised.fill",
+                    .orange)
+            
+        default:
+            return ("準備OK！🫶 ジェスチャーを作ってください",
+                    "hands.sparkles.fill",
+                    .green)
         }
     }
 }
+
 
 // MARK: - AVCaptureVideoPreviewLayer を SwiftUI で使うためのラッパー
 struct CameraPreviewView: NSViewRepresentable {
