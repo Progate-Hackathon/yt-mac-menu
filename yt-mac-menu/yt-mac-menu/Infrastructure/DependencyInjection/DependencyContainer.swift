@@ -35,7 +35,11 @@ class DependencyContainer {
     
     // MARK: - Presentation Layer
     
-    func makeAppCoordinator() -> AppCoordinator {
+    private(set) lazy var appCoordinator: AppCoordinator = {
         return AppCoordinator(gestureRepository: gestureRepository)
+    }()
+    
+    func makeAppCoordinator() -> AppCoordinator {
+        return appCoordinator
     }
 }
