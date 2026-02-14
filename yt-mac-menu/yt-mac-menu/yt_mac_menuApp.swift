@@ -9,7 +9,13 @@ import SwiftUI
 
 @main
 struct yt_mac_menuApp: App {
-    @StateObject private var appViewModel = AppViewModel()
+    private let container = DependencyContainer.shared
+    @StateObject private var appViewModel: AppViewModel
+    
+    init() {
+        let coordinator = DependencyContainer.shared.makeAppCoordinator()
+        _appViewModel = StateObject(wrappedValue: AppViewModel(coordinator: coordinator))
+    }
     
     var body: some Scene {
         MenuBarExtra("yt-mac-menu", systemImage: "star.fill") {

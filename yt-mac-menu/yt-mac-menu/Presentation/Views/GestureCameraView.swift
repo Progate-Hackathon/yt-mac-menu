@@ -2,7 +2,17 @@ import SwiftUI
 import AVFoundation
 
 struct GestureCameraView: View {
-    @StateObject private var gestureCameraViewModel = GestureCameraViewModel()
+    @StateObject private var gestureCameraViewModel: GestureCameraViewModel
+    
+    init() {
+        let container = DependencyContainer.shared
+        let cameraUseCase = container.makeCameraManagementUseCase()
+        let gestureUseCase = container.makeGestureDetectionUseCase()
+        _gestureCameraViewModel = StateObject(wrappedValue: GestureCameraViewModel(
+            cameraUseCase: cameraUseCase,
+            gestureUseCase: gestureUseCase
+        ))
+    }
     
     var body: some View {
         ZStack {
