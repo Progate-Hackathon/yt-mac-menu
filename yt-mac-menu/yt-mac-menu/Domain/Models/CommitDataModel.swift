@@ -8,8 +8,15 @@
 import Foundation
 
 struct CommitDataModel: Codable {
+    let owner: String
     let githubToken: String
     let repository: String
-    let branch: String
-    let diff: String
+    let baseBranch: String
+    let files: FileData
+}
+
+
+struct FileData: Codable {
+    let path: String
+    let DataString: String
 }
