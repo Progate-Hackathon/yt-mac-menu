@@ -5,7 +5,6 @@ class CameraWindowController: NSObject, NSWindowDelegate {
     static let shared = CameraWindowController()
     
     private var window: NSWindow?
-    private var isProgrammaticClose = false
     
     private override init() {
         super.init()
@@ -50,16 +49,13 @@ class CameraWindowController: NSObject, NSWindowDelegate {
     }
     
     func close() {
-        isProgrammaticClose = true
         window?.close()
     }
     
     func windowWillClose(_ notification: Notification) {
-        if !isProgrammaticClose {
-            let coordinator = DependencyContainer.shared.makeAppCoordinator()
-            coordinator.stop()
-        }
-        isProgrammaticClose = false
+        // ウィンドウが閉じるときは常にコーディネーターに通知
+        // コーディネーター側で現在の状態に応じて適切に処理
+        DependencyContainer.shared.appCoordinator.handleWindowClose()
         window = nil
     }
 }
