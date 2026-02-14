@@ -7,11 +7,12 @@ class GestureCameraViewModel: ObservableObject {
         didSet { handleStateChange(appState) }
     }
     
+    let cameraUseCase: CameraManagementUseCase
+    
     var session: AVCaptureSession {
         cameraUseCase.session
     }
     
-    private let cameraUseCase: CameraManagementUseCase
     private let gestureUseCase: GestureDetectionUseCase
     private var cancellables = Set<AnyCancellable>()
     

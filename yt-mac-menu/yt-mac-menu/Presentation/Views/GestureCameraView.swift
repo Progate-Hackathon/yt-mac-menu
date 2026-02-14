@@ -49,12 +49,19 @@ struct GestureCameraView: View {
 
 struct ActiveCameraView: View {
     let session: AVCaptureSession
+    @State private var triggerUpdate = false
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            CameraPreviewView(session: session)
+            CameraPreviewView(session: session, triggerUpdate: triggerUpdate)
                 .cornerRadius(12)
                 .padding(10)
+                .onAppear {
+                    // セッション開始を待ってからミラーリングをトリガー
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        triggerUpdate.toggle()
+                    }
+                }
             
             Text("カメラに向かってジェスチャー🫶をしてください")
                 .padding(8)
@@ -68,6 +75,7 @@ struct ActiveCameraView: View {
 // MARK: - AVCaptureVideoPreviewLayer を SwiftUI で使うためのラッパー
 struct CameraPreviewView: NSViewRepresentable {
     let session: AVCaptureSession
+    let triggerUpdate: Bool
     
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
@@ -79,16 +87,6 @@ struct CameraPreviewView: NSViewRepresentable {
         
         view.layer = previewLayer
         
-        // ミラーリングを遅延設定（セッションが開始されてから）
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            if let connection = previewLayer.connection,
-               connection.isVideoMirroringSupported {
-                connection.automaticallyAdjustsVideoMirroring = false
-                connection.isVideoMirrored = true
-                print("カメラミラーリング有効化: \(connection.isVideoMirrored)")
-            }
-        }
-        
         return view
     }
     
@@ -96,13 +94,15 @@ struct CameraPreviewView: NSViewRepresentable {
         if let layer = nsView.layer as? AVCaptureVideoPreviewLayer {
             layer.frame = nsView.bounds
             
-            // updateでもミラーリングを確認
-            if let connection = layer.connection,
-               connection.isVideoMirroringSupported,
-               !connection.isVideoMirrored {
-                connection.automaticallyAdjustsVideoMirroring = false
-                connection.isVideoMirrored = true
-                print("カメラミラーリング再設定")
+            // セッションが実行中かつミラーリングが未設定の場合に設定
+            if session.isRunning,
+               let connection = layer.connection,
+               connection.isVideoMirroringSupported {
+                if !connection.isVideoMirrored {
+                    connection.automaticallyAdjustsVideoMirroring = false
+                    connection.isVideoMirrored = true
+                    print("カメラミラーリング有効化: \(connection.isVideoMirrored)")
+                }
             }
         }
     }
