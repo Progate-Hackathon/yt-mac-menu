@@ -77,18 +77,33 @@ struct CameraPreviewView: NSViewRepresentable {
         previewLayer.videoGravity = .resizeAspectFill
         previewLayer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
         
-        if previewLayer.connection?.isVideoMirroringSupported == true {
-            previewLayer.connection?.automaticallyAdjustsVideoMirroring = false
-            previewLayer.connection?.isVideoMirrored = true
+        view.layer = previewLayer
+        
+        // ミラーリングを遅延設定（セッションが開始されてから）
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            if let connection = previewLayer.connection,
+               connection.isVideoMirroringSupported {
+                connection.automaticallyAdjustsVideoMirroring = false
+                connection.isVideoMirrored = true
+                print("カメラミラーリング有効化: \(connection.isVideoMirrored)")
+            }
         }
         
-        view.layer = previewLayer
         return view
     }
     
     func updateNSView(_ nsView: NSView, context: Context) {
         if let layer = nsView.layer as? AVCaptureVideoPreviewLayer {
             layer.frame = nsView.bounds
+            
+            // updateでもミラーリングを確認
+            if let connection = layer.connection,
+               connection.isVideoMirroringSupported,
+               !connection.isVideoMirrored {
+                connection.automaticallyAdjustsVideoMirroring = false
+                connection.isVideoMirrored = true
+                print("カメラミラーリング再設定")
+            }
         }
     }
 }
