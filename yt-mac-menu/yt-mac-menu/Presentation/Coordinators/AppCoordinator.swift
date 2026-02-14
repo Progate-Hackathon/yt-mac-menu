@@ -23,6 +23,38 @@ class AppCoordinator: ObservableObject {
         transition(to: .idle)
     }
     
+    func handleWindowClose() {
+        // ウィンドウが閉じたときの処理
+        // 現在の状態に応じて適切に対応
+        print("AppCoordinator: ウィンドウが閉じられました（現在の状態: \(currentState.description)）")
+        
+        resetWorkItem?.cancel()
+        
+        switch currentState {
+        case .detectingHeart, .heartDetected:
+            // ハート検出中または検出後の場合は、スナップ待機モードに戻る
+            print("AppCoordinator: スナップ待機モードへリセット")
+            isCameraVisible = false
+            transition(to: .resetting)
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                self?.transition(to: .listeningForSnap)
+                self?.gestureRepository.sendCommand(.disableHeart)
+                self?.gestureRepository.sendCommand(.enableSnap)
+            }
+            
+        case .resetting:
+            // リセット中の場合は、既に処理が進行中なので何もしない
+            print("AppCoordinator: リセット処理中のため何もしません")
+            isCameraVisible = false
+            
+        default:
+            // その他の状態では単にカメラを非表示に
+            print("AppCoordinator: カメラを非表示にします")
+            isCameraVisible = false
+        }
+    }
+    
     private func setupBindings() {
         gestureRepository.eventPublisher
             .receive(on: DispatchQueue.main)
