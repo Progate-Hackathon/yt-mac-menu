@@ -7,6 +7,10 @@ class DependencyContainer {
     
     // MARK: - Data Layer
     
+    private lazy var commitDataRepository: CommitDataRepositoryProtocol = {
+        return CommitDataRepository()
+    }()
+    
     private lazy var webSocketClient: WebSocketClientProtocol = {
         let url = URL(string: "ws://localhost:8765")!
         return WebSocketClient(url: url)
