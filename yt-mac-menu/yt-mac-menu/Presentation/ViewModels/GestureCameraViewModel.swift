@@ -6,6 +6,8 @@ class GestureCameraViewModel: ObservableObject {
     @Published var appState: AppStatus = .waiting {
         didSet { handleStateChange(appState) }
     }
+
+    @Published var detectedHandCount: Int = 0
     
     let cameraUseCase: CameraManagementUseCase
     
@@ -37,10 +39,12 @@ class GestureCameraViewModel: ObservableObject {
             .sink { [weak self] event in
                 guard let self = self else { return }
                 switch event {
-                case .heartDetected:
-                    self.appState = .success
-                default:
-                    break
+                    case .heartDetected:
+                        self.appState = .success
+                    case .handCount(let detectedHandCount):
+                        self.detectedHandCount = detectedHandCount
+                    default:
+                        break
                 }
             }
             .store(in: &cancellables)
