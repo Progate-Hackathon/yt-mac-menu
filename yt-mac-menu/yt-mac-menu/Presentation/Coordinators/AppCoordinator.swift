@@ -37,6 +37,7 @@ class AppCoordinator: ObservableObject {
         print("AppCoordinator: ウィンドウが閉じられました（現在の状態: \(currentState.description)）")
         
         resetWorkItem?.cancel()
+        isRequestingCameraPermission = false
         
         switch currentState {
         case .detectingHeart, .heartDetected, .committingData, .commitSuccess, .commitError:
