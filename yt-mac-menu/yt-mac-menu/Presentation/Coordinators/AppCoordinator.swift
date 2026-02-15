@@ -6,11 +6,16 @@ class AppCoordinator: ObservableObject {
     @Published private(set) var isCameraVisible: Bool = false
     
     private let gestureRepository: GestureRepositoryProtocol
+    private let commitDataModelUseCase: CommitDataModelUseCase
     private var cancellables = Set<AnyCancellable>()
     private var resetWorkItem: DispatchWorkItem?
     
-    init(gestureRepository: GestureRepositoryProtocol) {
+    init(
+        gestureRepository: GestureRepositoryProtocol,
+        commitDataModelUseCase: CommitDataModelUseCase
+    ) {
         self.gestureRepository = gestureRepository
+        self.commitDataModelUseCase = commitDataModelUseCase
         setupBindings()
     }
     
@@ -113,12 +118,42 @@ class AppCoordinator: ObservableObject {
             return
         }
         
-        print("AppCoordinator: ハート検出 → 成功状態へ移行")
+        print("AppCoordinator: ハート検出 → コミットデータ送信開始")
         transition(to: .heartDetected)
         
         gestureRepository.sendCommand(.disableHeart)
         
+        // コミットデータの送信を開始
+        sendCommitData()
+    }
+    
+    private func sendCommitData() {
+        transition(to: .committingData)
+        
+        Task {
+            do {
+                try await commitDataModelUseCase.sendCommitData()
+                await MainActor.run {
+                    self.handleCommitSuccess()
+                }
+            } catch {
+                await MainActor.run {
+                    self.handleCommitError(error)
+                }
+            }
+        }
+    }
+    
+    private func handleCommitSuccess() {
+        print("AppCoordinator: コミット成功")
+        transition(to: .commitSuccess)
         scheduleReset()
+    }
+    
+    private func handleCommitError(_ error: Error) {
+        print("AppCoordinator: コミット失敗 - \(error.localizedDescription)")
+        transition(to: .commitError(error))
+        // エラー時はリセットをスケジュールしない - ユーザーが手動でウィンドウを閉じる必要がある
     }
     
     private func scheduleReset() {
