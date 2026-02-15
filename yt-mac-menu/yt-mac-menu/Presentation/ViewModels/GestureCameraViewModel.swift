@@ -15,6 +15,8 @@ class GestureCameraViewModel: ObservableObject {
         cameraUseCase.session
     }
     
+    private let commitDataModelUseCase: CommitDataModelUseCase
+    
     private let gestureUseCase: GestureDetectionUseCase
     private var cancellables = Set<AnyCancellable>()
     
@@ -25,9 +27,14 @@ class GestureCameraViewModel: ObservableObject {
         case unauthorized
     }
     
-    init(cameraUseCase: CameraManagementUseCase, gestureUseCase: GestureDetectionUseCase) {
+    init(
+        cameraUseCase: CameraManagementUseCase,
+        gestureUseCase: GestureDetectionUseCase,
+        commitDataModelUseCase: CommitDataModelUseCase
+    ) {
         self.cameraUseCase = cameraUseCase
         self.gestureUseCase = gestureUseCase
+        self.commitDataModelUseCase = commitDataModelUseCase
         print("GestureCameraViewModel initialized")
         checkPermission()
         setupBindings()
@@ -40,7 +47,7 @@ class GestureCameraViewModel: ObservableObject {
                 guard let self = self else { return }
                 switch event {
                     case .heartDetected:
-                        self.appState = .success
+                        self.handleHeartDetected()
                     case .handCount(let detectedHandCount):
                         self.detectedHandCount = detectedHandCount
                     default:
@@ -48,6 +55,20 @@ class GestureCameraViewModel: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+    }
+    
+    
+    // AWS側にCommitDataを送信しappStateをsuccessに更新する
+    private func handleHeartDetected() {
+        Task {
+            do {
+                try await commitDataModelUseCase.sendCommitData()
+                self.appState = .success
+            } catch {
+                // TODO: AWS側への送信ロジックが完成したら　エラー処理を実装
+                print("GestureViewModel/\(#function) エラー発生 \(error.localizedDescription)")
+            }
+        }
     }
     
     private func handleStateChange(_ state: AppStatus) {
