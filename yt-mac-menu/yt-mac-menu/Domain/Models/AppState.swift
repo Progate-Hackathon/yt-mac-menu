@@ -1,6 +1,6 @@
 import Foundation
 
-enum AppState {
+enum AppState: Equatable {
     case idle
     case listeningForSnap
     case snapDetected
@@ -10,6 +10,24 @@ enum AppState {
     case commitSuccess
     case commitError(Error)
     case resetting
+    
+    static func == (lhs: AppState, rhs: AppState) -> Bool {
+        switch (lhs, rhs) {
+        case (.idle, .idle),
+             (.listeningForSnap, .listeningForSnap),
+             (.snapDetected, .snapDetected),
+             (.detectingHeart, .detectingHeart),
+             (.heartDetected, .heartDetected),
+             (.committingData, .committingData),
+             (.commitSuccess, .commitSuccess),
+             (.resetting, .resetting):
+            return true
+        case (.commitError(let lhsError), .commitError(let rhsError)):
+            return lhsError.localizedDescription == rhsError.localizedDescription
+        default:
+            return false
+        }
+    }
     
     var description: String {
         switch self {
