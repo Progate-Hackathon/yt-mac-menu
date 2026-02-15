@@ -35,23 +35,60 @@ class GitService {
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
         process.arguments = arguments
 
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = Pipe()
+        let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
+        process.standardOutput = stdoutPipe
+        process.standardError = stderrPipe
+
+        // プロセス実行中に標準出力・標準エラー出力を読み取る
+        var stdoutData = Data()
+        var stderrData = Data()
+        let readGroup = DispatchGroup()
+
+        readGroup.enter()
+        DispatchQueue.global().async {
+            let data = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+            stdoutData.append(data)
+            readGroup.leave()
+        }
+
+        readGroup.enter()
+        DispatchQueue.global().async {
+            let data = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+            stderrData.append(data)
+            readGroup.leave()
+        }
 
         do {
             try process.run()
             process.waitUntilExit()
 
+            // 読み取りスレッドの完了を待機
+            readGroup.wait()
+
+            let stderrString = String(data: stderrData, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+
             guard process.terminationStatus == 0 else {
-                print("[GitService] Gitコマンドが終了コードで失敗しました \(process.terminationStatus): git \(arguments.joined(separator: " "))")
+                if let stderrString, !stderrString.isEmpty {
+                    print("[GitService] Gitコマンドが終了コードで失敗しました \(process.terminationStatus): git \(arguments.joined(separator: " ")), stderr: \(stderrString)")
+                } else {
+                    print("[GitService] Gitコマンドが終了コードで失敗しました \(process.terminationStatus): git \(arguments.joined(separator: " "))")
+                }
                 return nil
             }
 
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let stdoutString = String(data: stdoutData, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return stdoutString
         } catch {
-            print("[GitService] Gitコマンドエラー: \(error.localizedDescription) — git \(arguments.joined(separator: " "))")
+            let stderrString = String(data: stderrData, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if stderrString.isEmpty {
+                print("[GitService] Gitコマンドエラー: \(error.localizedDescription) — git \(arguments.joined(separator: " "))")
+            } else {
+                print("[GitService] Gitコマンドエラー: \(error.localizedDescription) — git \(arguments.joined(separator: " ")), stderr: \(stderrString)")
+            }
             return nil
         }
     }
