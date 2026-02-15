@@ -1,5 +1,5 @@
 //
-//  GithubTokenValidator.swift
+//  GitHubAPIClient.swift
 //  yt-mac-menu
 //
 //  Created by アウン on 2026/02/12.
@@ -7,8 +7,8 @@
 
 import Foundation
 
-final class GithubTokenValidator {
-    static var shared = GithubTokenValidator()
+final class GitHubAPIClient {
+    static var shared = GitHubAPIClient()
     
     
     private init() {}

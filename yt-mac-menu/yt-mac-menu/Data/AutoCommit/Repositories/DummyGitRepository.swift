@@ -1,5 +1,5 @@
 //
-//  GitService.swift
+//  DummyGitRepository.swift
 //  yt-mac-menu
 //
 //  Created by アウン on 2026/02/15.
@@ -8,7 +8,7 @@
 import Foundation
 
 // Issue32完成する前の仮版
-class DummyGitService: GitRepositoryProtocol {
+class DummyGitRepository: GitRepositoryProtocol {
     func getRepositoryName(projectPath: String) throws -> String {
         return ""
     }

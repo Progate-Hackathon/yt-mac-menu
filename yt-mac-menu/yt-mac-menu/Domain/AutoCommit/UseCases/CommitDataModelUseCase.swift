@@ -34,7 +34,7 @@ class CommitDataModelUseCase {
     private func createCommitDataModel() throws -> CommitDataModel {
         
         // project pathを取得
-        guard let projectPath = UserDefaultUtility.shared.get(key: .projectFolderPath) else {
+        guard let projectPath = UserDefaultsManager.shared.get(key: .projectFolderPath) else {
             print("CommitDataModelUseCase: Project Pathが見つかりません。")
             throw CommitDataModelUseCaseError.projectPathNotFound
         }
@@ -47,7 +47,7 @@ class CommitDataModelUseCase {
         let owner = try gitRepository.getOwner(projectPath: projectPath)
         
         // GitHubトークンを取得
-        guard let githubToken = UserDefaultUtility.shared.get(key: .githubToken) else {
+        guard let githubToken = UserDefaultsManager.shared.get(key: .githubToken) else {
             print("CommitDataModelUseCase: GitHubトークンが見つかりません")
             throw CommitDataModelUseCaseError.tokenNotFound
         }

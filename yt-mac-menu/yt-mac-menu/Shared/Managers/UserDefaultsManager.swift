@@ -1,5 +1,5 @@
 //
-//  UserDefaultUtility.swift
+//  UserDefaultsManager.swift
 //  yt-mac-menu
 //
 //  Created by アウン on 2026/02/12.
@@ -12,8 +12,8 @@ enum UserDefaultKeys: String {
     case projectFolderPath
 }
 
-final class UserDefaultUtility {
-    static let shared = UserDefaultUtility()
+final class UserDefaultsManager {
+    static let shared = UserDefaultsManager()
     
     private init() {}
     

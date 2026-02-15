@@ -32,8 +32,8 @@ class SettingsViewModel: ObservableObject {
         guard isProjectPathValid() else { return }
         guard await isGitHubTokenValid() else { return }
 
-        UserDefaultUtility.shared.save(key: .githubToken, value: githubToken)
-        UserDefaultUtility.shared.save(key: .projectFolderPath, value: selectedProjectPath)
+        UserDefaultsManager.shared.save(key: .githubToken, value: githubToken)
+        UserDefaultsManager.shared.save(key: .projectFolderPath, value: selectedProjectPath)
         
         errorMessage = nil
         hasUnsavedChanges = false
@@ -62,8 +62,8 @@ private extension SettingsViewModel {
     
     @MainActor
     private func loadSettings() {
-        self.githubToken = UserDefaultUtility.shared.get(key: .githubToken) ?? ""
-        self.selectedProjectPath = UserDefaultUtility.shared.get(key: .projectFolderPath) ?? ""
+        self.githubToken = UserDefaultsManager.shared.get(key: .githubToken) ?? ""
+        self.selectedProjectPath = UserDefaultsManager.shared.get(key: .projectFolderPath) ?? ""
     }
     
     
@@ -103,7 +103,7 @@ private extension SettingsViewModel {
     @MainActor
     private func isGitHubTokenValid() async -> Bool{
         do {
-            return try await GithubTokenValidator.shared.isValidToken(githubToken)
+            return try await GitHubAPIClient.shared.isValidToken(githubToken)
         } catch GitHubTokenError.network(let networkError) {
             showError("ネットワークの問題が発生しました。やり直してください。")
             print("Tokenの検証に失敗(NetworkError): \(networkError.localizedDescription)")
