@@ -39,17 +39,25 @@ class AppCoordinator: ObservableObject {
         resetWorkItem?.cancel()
         isRequestingCameraPermission = false
         
+        // まずカメラを明示的に停止（ウィンドウ破棄前に）
+        print("AppCoordinator: カメラを停止します")
+        cameraManagementUseCase.stopCamera()
+        
         switch currentState {
         case .detectingHeart, .heartDetected, .committingData, .commitSuccess, .commitError:
             // ハート検出中、処理中、またはエラー状態から閉じる場合は、スナップ待機モードに戻る
             print("AppCoordinator: スナップ待機モードへリセット")
-            isCameraVisible = false
-            transition(to: .resetting)
             
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-                self?.transition(to: .listeningForSnap)
-                self?.gestureRepository.sendCommand(.disableHeart)
-                self?.gestureRepository.sendCommand(.enableSnap)
+            // カメラ停止完了を待ってからウィンドウを閉じる
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                self?.isCameraVisible = false
+                self?.transition(to: .resetting)
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    self?.transition(to: .listeningForSnap)
+                    self?.gestureRepository.sendCommand(.disableHeart)
+                    self?.gestureRepository.sendCommand(.enableSnap)
+                }
             }
             
         case .resetting:
@@ -60,10 +68,12 @@ class AppCoordinator: ObservableObject {
         default:
             // その他の状態では単にカメラを非表示にしてスナップ待機に戻る
             print("AppCoordinator: カメラを非表示にしてスナップ待機に戻ります")
-            isCameraVisible = false
-            transition(to: .listeningForSnap)
-            gestureRepository.sendCommand(.disableHeart)
-            gestureRepository.sendCommand(.enableSnap)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                self?.isCameraVisible = false
+                self?.transition(to: .listeningForSnap)
+                self?.gestureRepository.sendCommand(.disableHeart)
+                self?.gestureRepository.sendCommand(.enableSnap)
+            }
         }
     }
     
