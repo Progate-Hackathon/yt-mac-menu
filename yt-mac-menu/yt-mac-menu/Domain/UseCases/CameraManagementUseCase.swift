@@ -58,22 +58,26 @@ class CameraManagementUseCase {
         sessionQueue.async { [weak self] in
             guard let self = self else { return }
             
-            // セッションに入力が既にある場合でも、停止中なら問題なし
+            // 既に入力がある場合はスキップ（重複追加を防ぐ）
             if !self.session.inputs.isEmpty {
-                print("CameraManagementUseCase: setupCamera() - session has inputs, preserved")
+                print("CameraManagementUseCase: setupCamera() - inputs already exist, skipping")
                 return
             }
             
+            print("CameraManagementUseCase: setupCamera() - adding camera input")
             self.session.beginConfiguration()
             
             if let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
                let input = try? AVCaptureDeviceInput(device: device),
                self.session.canAddInput(input) {
                 self.session.addInput(input)
-                print("CameraManagementUseCase: setupCamera() - input added")
+                print("CameraManagementUseCase: setupCamera() - input added successfully")
+            } else {
+                print("CameraManagementUseCase: setupCamera() - FAILED to add input")
             }
             
             self.session.commitConfiguration()
+            print("CameraManagementUseCase: setupCamera() - configuration complete")
         }
     }
     
