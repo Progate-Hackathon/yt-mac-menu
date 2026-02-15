@@ -40,31 +40,13 @@ class GitService {
         process.standardOutput = stdoutPipe
         process.standardError = stderrPipe
 
-        // プロセス実行中に標準出力・標準エラー出力を読み取る
-        var stdoutData = Data()
-        var stderrData = Data()
-        let readGroup = DispatchGroup()
-
-        readGroup.enter()
-        DispatchQueue.global().async {
-            let data = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-            stdoutData.append(data)
-            readGroup.leave()
-        }
-
-        readGroup.enter()
-        DispatchQueue.global().async {
-            let data = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-            stderrData.append(data)
-            readGroup.leave()
-        }
-
         do {
             try process.run()
             process.waitUntilExit()
 
-            // 読み取りスレッドの完了を待機
-            readGroup.wait()
+            // プロセス終了後に同期的に読み取る
+            let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+            let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
 
             let stderrString = String(data: stderrData, encoding: .utf8)?
                 .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -82,13 +64,7 @@ class GitService {
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             return stdoutString
         } catch {
-            let stderrString = String(data: stderrData, encoding: .utf8)?
-                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            if stderrString.isEmpty {
-                print("[GitService] Gitコマンドエラー: \(error.localizedDescription) — git \(arguments.joined(separator: " "))")
-            } else {
-                print("[GitService] Gitコマンドエラー: \(error.localizedDescription) — git \(arguments.joined(separator: " ")), stderr: \(stderrString)")
-            }
+            print("[GitService] Gitコマンドエラー: \(error.localizedDescription) — git \(arguments.joined(separator: " "))")
             return nil
         }
     }
