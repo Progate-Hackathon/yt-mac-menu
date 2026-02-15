@@ -132,3 +132,16 @@ class GitRepository: GitRepositoryProtocol {
 }
 
 // MARK: - GitError
+enum GitError: LocalizedError {
+    case commandFailed(String)
+    case invalidFormat(String)
+    
+    var errorDescription: String? {
+        switch self {
+        case .commandFailed(let message):
+            return "Gitコマンドエラー: \(message)"
+        case .invalidFormat(let message):
+            return "Git形式エラー: \(message)"
+        }
+    }
+}
