@@ -10,7 +10,7 @@ import Foundation
 /// プロジェクトのGit情報（リポジトリ名、ブランチ名）を取得するサービスクラス
 class GitService {
 
-    // MARK: - Public Methot
+    // MARK: - Public Method
     
     /// リモートoriginのURLから "username/repo" 形式のリポジトリ名を取得する
     func getRepositoryName(projectPath: String) -> String? {
@@ -27,7 +27,7 @@ class GitService {
         return executeGitCommand(arguments: ["rev-parse", "--abbrev-ref", "HEAD"], at: projectPath)
     }
     
-    // MARK: - Private Methot
+    // MARK: - Private Method
     
     private func executeGitCommand(arguments: [String], at path: String) -> String? {
         let process = Process()
