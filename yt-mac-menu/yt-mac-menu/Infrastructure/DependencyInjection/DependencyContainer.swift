@@ -38,12 +38,16 @@ class DependencyContainer {
     
     // MARK: - Domain Layer
     
+    private lazy var cameraManagementUseCase: CameraManagementUseCase = {
+        return CameraManagementUseCase()
+    }()
+    
     func makeGestureDetectionUseCase() -> GestureDetectionUseCase {
         return GestureDetectionUseCase(gestureRepository: gestureRepository)
     }
     
     func makeCameraManagementUseCase() -> CameraManagementUseCase {
-        return CameraManagementUseCase()
+        return cameraManagementUseCase
     }
     
     func makeCommitDataModelUseCase() -> CommitDataModelUseCase {
@@ -53,7 +57,11 @@ class DependencyContainer {
     // MARK: - Presentation Layer
     
     private(set) lazy var appCoordinator: AppCoordinator = {
-        return AppCoordinator(gestureRepository: gestureRepository)
+        return AppCoordinator(
+            gestureRepository: gestureRepository,
+            commitDataModelUseCase: makeCommitDataModelUseCase(),
+            cameraManagementUseCase: makeCameraManagementUseCase()
+        )
     }()
     
     func makeAppCoordinator() -> AppCoordinator {

@@ -2,15 +2,24 @@ import Foundation
 import Combine
 
 class AppCoordinator: ObservableObject {
-    @Published private(set) var currentState: AppState = .idle
+    @Published private(set) var currentState: AppState = .listeningForSnap
     @Published private(set) var isCameraVisible: Bool = false
     
     private let gestureRepository: GestureRepositoryProtocol
+    private let commitDataModelUseCase: CommitDataModelUseCase
+    private let cameraManagementUseCase: CameraManagementUseCase
     private var cancellables = Set<AnyCancellable>()
     private var resetWorkItem: DispatchWorkItem?
+    private var isRequestingCameraPermission = false
     
-    init(gestureRepository: GestureRepositoryProtocol) {
+    init(
+        gestureRepository: GestureRepositoryProtocol,
+        commitDataModelUseCase: CommitDataModelUseCase,
+        cameraManagementUseCase: CameraManagementUseCase
+    ) {
         self.gestureRepository = gestureRepository
+        self.commitDataModelUseCase = commitDataModelUseCase
+        self.cameraManagementUseCase = cameraManagementUseCase
         setupBindings()
     }
     
@@ -20,19 +29,19 @@ class AppCoordinator: ObservableObject {
     
     func stop() {
         gestureRepository.disconnect()
-        transition(to: .idle)
+        transition(to: .listeningForSnap)
     }
     
     func handleWindowClose() {
         // ウィンドウが閉じたときの処理
-        // 現在の状態に応じて適切に対応
         print("AppCoordinator: ウィンドウが閉じられました（現在の状態: \(currentState.description)）")
         
         resetWorkItem?.cancel()
+        isRequestingCameraPermission = false
         
         switch currentState {
-        case .detectingHeart, .heartDetected:
-            // ハート検出中または検出後の場合は、スナップ待機モードに戻る
+        case .detectingHeart, .heartDetected, .committingData, .commitSuccess, .commitError:
+            // ハート検出中、処理中、またはエラー状態から閉じる場合は、スナップ待機モードに戻る
             print("AppCoordinator: スナップ待機モードへリセット")
             isCameraVisible = false
             transition(to: .resetting)
@@ -49,9 +58,12 @@ class AppCoordinator: ObservableObject {
             isCameraVisible = false
             
         default:
-            // その他の状態では単にカメラを非表示に
-            print("AppCoordinator: カメラを非表示にします")
+            // その他の状態では単にカメラを非表示にしてスナップ待機に戻る
+            print("AppCoordinator: カメラを非表示にしてスナップ待機に戻ります")
             isCameraVisible = false
+            transition(to: .listeningForSnap)
+            gestureRepository.sendCommand(.disableHeart)
+            gestureRepository.sendCommand(.enableSnap)
         }
     }
     
@@ -87,7 +99,7 @@ class AppCoordinator: ObservableObject {
     
     private func handleDisconnected() {
         print("AppCoordinator: WebSocket切断")
-        transition(to: .idle)
+        transition(to: .listeningForSnap)
         isCameraVisible = false
     }
     
@@ -97,14 +109,59 @@ class AppCoordinator: ObservableObject {
             return
         }
         
-        print("AppCoordinator: スナップ検出 → ハート検出モードへ移行")
+        // 複数のスナップ検出を防ぐ
+        if isRequestingCameraPermission {
+            print("AppCoordinator: カメラ権限リクエスト中のため、スナップを無視します")
+            return
+        }
+        
+        print("AppCoordinator: スナップ検出 → カメラ権限チェック")
         transition(to: .snapDetected)
         
         gestureRepository.sendCommand(.disableSnap)
-        gestureRepository.sendCommand(.enableHeart)
         
-        isCameraVisible = true
-        transition(to: .detectingHeart)
+        // カメラ権限をチェックしてからウィンドウを開く
+        checkCameraPermissionAndOpenWindow()
+    }
+    
+    private func checkCameraPermissionAndOpenWindow() {
+        // すでに権限がある場合
+        if cameraManagementUseCase.checkPermissionStatus() {
+            print("AppCoordinator: カメラ権限OK → カメラをセットアップしてウィンドウを開きます")
+            cameraManagementUseCase.setupCamera()
+            openCameraWindow()
+            return
+        }
+        
+        // 権限をリクエスト
+        print("AppCoordinator: カメラ権限をリクエスト中...")
+        isRequestingCameraPermission = true
+        
+        cameraManagementUseCase.requestPermission { [weak self] granted in
+            guard let self = self else { return }
+            self.isRequestingCameraPermission = false
+            
+            if granted {
+                print("AppCoordinator: カメラ権限が許可されました → カメラをセットアップしてウィンドウを開きます")
+                self.cameraManagementUseCase.setupCamera()
+                self.openCameraWindow()
+            } else {
+                print("AppCoordinator: カメラ権限が拒否されました → スナップ待機に戻ります")
+                self.transition(to: .listeningForSnap)
+                self.gestureRepository.sendCommand(.enableSnap)
+            }
+        }
+    }
+    
+    private func openCameraWindow() {
+        // カメラセットアップが完了するまで少し待つ
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            guard let self = self else { return }
+            print("AppCoordinator: ウィンドウを開いてハート検出を有効化")
+            self.gestureRepository.sendCommand(.enableHeart)
+            self.isCameraVisible = true
+            self.transition(to: .detectingHeart)
+        }
     }
     
     private func handleHeartDetected() {
@@ -113,12 +170,42 @@ class AppCoordinator: ObservableObject {
             return
         }
         
-        print("AppCoordinator: ハート検出 → 成功状態へ移行")
+        print("AppCoordinator: ハート検出 → コミットデータ送信開始")
         transition(to: .heartDetected)
         
         gestureRepository.sendCommand(.disableHeart)
         
+        // コミットデータの送信を開始
+        sendCommitData()
+    }
+    
+    private func sendCommitData() {
+        transition(to: .committingData)
+        
+        Task {
+            do {
+                try await commitDataModelUseCase.sendCommitData()
+                await MainActor.run {
+                    self.handleCommitSuccess()
+                }
+            } catch {
+                await MainActor.run {
+                    self.handleCommitError(error)
+                }
+            }
+        }
+    }
+    
+    private func handleCommitSuccess() {
+        print("AppCoordinator: コミット成功")
+        transition(to: .commitSuccess)
         scheduleReset()
+    }
+    
+    private func handleCommitError(_ error: Error) {
+        print("AppCoordinator: コミット失敗 - \(error.localizedDescription)")
+        transition(to: .commitError(error))
+        // エラー時はリセットをスケジュールしない - ユーザーが手動でウィンドウを閉じる必要がある
     }
     
     private func scheduleReset() {
