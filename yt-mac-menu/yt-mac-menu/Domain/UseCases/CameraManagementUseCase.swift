@@ -15,6 +15,18 @@ class CameraManagementUseCase {
         case inactive
     }
     
+    func checkPermissionStatus() -> Bool {
+        let status = AVCaptureDevice.authorizationStatus(for: .video)
+        let isAuthorized = status == .authorized
+        
+        // 状態を同期
+        if isAuthorized && cameraState != .authorized {
+            cameraState = .authorized
+        }
+        
+        return isAuthorized
+    }
+    
     func requestPermission(completion: @escaping (Bool) -> Void) {
         let status = AVCaptureDevice.authorizationStatus(for: .video)
         
