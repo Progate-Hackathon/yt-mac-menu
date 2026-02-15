@@ -7,15 +7,19 @@ class AppCoordinator: ObservableObject {
     
     private let gestureRepository: GestureRepositoryProtocol
     private let commitDataModelUseCase: CommitDataModelUseCase
+    private let cameraManagementUseCase: CameraManagementUseCase
     private var cancellables = Set<AnyCancellable>()
     private var resetWorkItem: DispatchWorkItem?
+    private var isRequestingCameraPermission = false
     
     init(
         gestureRepository: GestureRepositoryProtocol,
-        commitDataModelUseCase: CommitDataModelUseCase
+        commitDataModelUseCase: CommitDataModelUseCase,
+        cameraManagementUseCase: CameraManagementUseCase
     ) {
         self.gestureRepository = gestureRepository
         self.commitDataModelUseCase = commitDataModelUseCase
+        self.cameraManagementUseCase = cameraManagementUseCase
         setupBindings()
     }
     
@@ -104,14 +108,59 @@ class AppCoordinator: ObservableObject {
             return
         }
         
-        print("AppCoordinator: スナップ検出 → ハート検出モードへ移行")
+        // 複数のスナップ検出を防ぐ
+        if isRequestingCameraPermission {
+            print("AppCoordinator: カメラ権限リクエスト中のため、スナップを無視します")
+            return
+        }
+        
+        print("AppCoordinator: スナップ検出 → カメラ権限チェック")
         transition(to: .snapDetected)
         
         gestureRepository.sendCommand(.disableSnap)
-        gestureRepository.sendCommand(.enableHeart)
         
-        isCameraVisible = true
-        transition(to: .detectingHeart)
+        // カメラ権限をチェックしてからウィンドウを開く
+        checkCameraPermissionAndOpenWindow()
+    }
+    
+    private func checkCameraPermissionAndOpenWindow() {
+        // すでに権限がある場合
+        if cameraManagementUseCase.checkPermissionStatus() {
+            print("AppCoordinator: カメラ権限OK → カメラをセットアップしてウィンドウを開きます")
+            cameraManagementUseCase.setupCamera()
+            openCameraWindow()
+            return
+        }
+        
+        // 権限をリクエスト
+        print("AppCoordinator: カメラ権限をリクエスト中...")
+        isRequestingCameraPermission = true
+        
+        cameraManagementUseCase.requestPermission { [weak self] granted in
+            guard let self = self else { return }
+            self.isRequestingCameraPermission = false
+            
+            if granted {
+                print("AppCoordinator: カメラ権限が許可されました → カメラをセットアップしてウィンドウを開きます")
+                self.cameraManagementUseCase.setupCamera()
+                self.openCameraWindow()
+            } else {
+                print("AppCoordinator: カメラ権限が拒否されました → スナップ待機に戻ります")
+                self.transition(to: .listeningForSnap)
+                self.gestureRepository.sendCommand(.enableSnap)
+            }
+        }
+    }
+    
+    private func openCameraWindow() {
+        // カメラセットアップが完了するまで少し待つ
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            guard let self = self else { return }
+            print("AppCoordinator: ウィンドウを開いてハート検出を有効化")
+            self.gestureRepository.sendCommand(.enableHeart)
+            self.isCameraVisible = true
+            self.transition(to: .detectingHeart)
+        }
     }
     
     private func handleHeartDetected() {
