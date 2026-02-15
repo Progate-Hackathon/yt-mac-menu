@@ -1,5 +1,5 @@
 //
-//  GitService.swift
+//  GitRepository.swift
 //  yt-mac-menu
 //
 //  Created by cmStudent on 2026/02/15.
@@ -7,24 +7,55 @@
 
 import Foundation
 
-/// プロジェクトのGit情報（リポジトリ名、ブランチ名）を取得するサービスクラス
-class GitService {
+/// プロジェクトのGit情報（リポジトリ名、ブランチ名）を取得するRepositoryクラス
+class GitRepository: GitRepositoryProtocol {
 
-    // MARK: - Public Method
+    // MARK: - Public Methods (GitRepositoryProtocol Implementation)
     
     /// リモートoriginのURLから "username/repo" 形式のリポジトリ名を取得する
-    func getRepositoryName(projectPath: String) -> String? {
+    func getRepositoryName(projectPath: String) throws -> String {
         // ターミナルコマンド git config --get remote.origin.url
         guard let remoteURL = executeGitCommand(arguments: ["config", "--get", "remote.origin.url"], at: projectPath) else {
-            return nil
+            throw GitError.commandFailed("Failed to get remote URL")
         }
-        return extractRepositoryName(from: remoteURL)
+        guard let repoName = extractRepositoryName(from: remoteURL) else {
+            throw GitError.invalidFormat("Failed to extract repository name")
+        }
+        return repoName
     }
 
     /// 現在チェックアウトしているブランチ名を取得する
-    func getCurrentBranch(projectPath: String) -> String? {
+    func getCurrentBranch(projectPath: String) throws -> String {
         // ターミナルコマンド git rev-parse --abbrev-ref HEAD
-        return executeGitCommand(arguments: ["rev-parse", "--abbrev-ref", "HEAD"], at: projectPath)
+        guard let branch = executeGitCommand(arguments: ["rev-parse", "--abbrev-ref", "HEAD"], at: projectPath) else {
+            throw GitError.commandFailed("Failed to get current branch")
+        }
+        return branch
+    }
+    
+    /// Git diffを取得する
+    func getDiff(projectPath: String) throws -> String {
+        guard let diff = executeGitCommand(arguments: ["diff"], at: projectPath) else {
+            throw GitError.commandFailed("Failed to get diff")
+        }
+        return diff
+    }
+    
+    /// リポジトリのオーナー名を取得する
+    func getOwner(projectPath: String) throws -> String {
+        let repoName = try getRepositoryName(projectPath: projectPath)
+        guard let owner = repoName.split(separator: "/").first else {
+            throw GitError.invalidFormat("Failed to extract owner from repository name")
+        }
+        return String(owner)
+    }
+    
+    /// 変更されたファイルのパスを取得する
+    func getChangedFilePaths(projectPath: String) throws -> [String] {
+        guard let output = executeGitCommand(arguments: ["diff", "--name-only"], at: projectPath) else {
+            throw GitError.commandFailed("Failed to get changed file paths")
+        }
+        return output.split(separator: "\n").map(String.init)
     }
     
     // MARK: - Private Method
@@ -53,9 +84,9 @@ class GitService {
 
             guard process.terminationStatus == 0 else {
                 if let stderrString, !stderrString.isEmpty {
-                    print("[GitService] Gitコマンドが終了コードで失敗しました \(process.terminationStatus): git \(arguments.joined(separator: " ")), stderr: \(stderrString)")
+                    print("[GitRepository] Gitコマンドが終了コードで失敗しました \(process.terminationStatus): git \(arguments.joined(separator: " ")), stderr: \(stderrString)")
                 } else {
-                    print("[GitService] Gitコマンドが終了コードで失敗しました \(process.terminationStatus): git \(arguments.joined(separator: " "))")
+                    print("[GitRepository] Gitコマンドが終了コードで失敗しました \(process.terminationStatus): git \(arguments.joined(separator: " "))")
                 }
                 return nil
             }
@@ -64,7 +95,7 @@ class GitService {
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             return stdoutString
         } catch {
-            print("[GitService] Gitコマンドエラー: \(error.localizedDescription) — git \(arguments.joined(separator: " "))")
+            print("[GitRepository] Gitコマンドエラー: \(error.localizedDescription) — git \(arguments.joined(separator: " "))")
             return nil
         }
     }
@@ -95,7 +126,9 @@ class GitService {
             }
         }
 
-        print("[GitService] URLからリポジトリ名を抽出できませんでした: \(remoteURL)")
+        print("[GitRepository] URLからリポジトリ名を抽出できませんでした: \(remoteURL)")
         return nil
     }
 }
+
+// MARK: - GitError
