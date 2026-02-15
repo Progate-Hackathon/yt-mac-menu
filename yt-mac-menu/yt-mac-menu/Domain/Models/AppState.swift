@@ -6,6 +6,9 @@ enum AppState {
     case snapDetected
     case detectingHeart
     case heartDetected
+    case committingData
+    case commitSuccess
+    case commitError(Error)
     case resetting
     
     var description: String {
@@ -20,6 +23,12 @@ enum AppState {
             return "Detecting Heart"
         case .heartDetected:
             return "Heart Detected"
+        case .committingData:
+            return "Committing Data"
+        case .commitSuccess:
+            return "Commit Success"
+        case .commitError:
+            return "Commit Error"
         case .resetting:
             return "Resetting"
         }
