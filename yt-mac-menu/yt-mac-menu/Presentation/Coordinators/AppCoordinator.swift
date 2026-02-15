@@ -30,14 +30,13 @@ class AppCoordinator: ObservableObject {
     
     func handleWindowClose() {
         // ウィンドウが閉じたときの処理
-        // 現在の状態に応じて適切に対応
         print("AppCoordinator: ウィンドウが閉じられました（現在の状態: \(currentState.description)）")
         
         resetWorkItem?.cancel()
         
         switch currentState {
-        case .detectingHeart, .heartDetected:
-            // ハート検出中または検出後の場合は、スナップ待機モードに戻る
+        case .detectingHeart, .heartDetected, .committingData, .commitSuccess, .commitError:
+            // ハート検出中、処理中、またはエラー状態から閉じる場合は、スナップ待機モードに戻る
             print("AppCoordinator: スナップ待機モードへリセット")
             isCameraVisible = false
             transition(to: .resetting)
@@ -54,9 +53,12 @@ class AppCoordinator: ObservableObject {
             isCameraVisible = false
             
         default:
-            // その他の状態では単にカメラを非表示に
-            print("AppCoordinator: カメラを非表示にします")
+            // その他の状態では単にカメラを非表示にしてスナップ待機に戻る
+            print("AppCoordinator: カメラを非表示にしてスナップ待機に戻ります")
             isCameraVisible = false
+            transition(to: .listeningForSnap)
+            gestureRepository.sendCommand(.disableHeart)
+            gestureRepository.sendCommand(.enableSnap)
         }
     }
     
