@@ -20,11 +20,20 @@ class DependencyContainer {
         return RemoteGestureDataSource(webSocketClient: webSocketClient)
     }()
     
+    private lazy var fileReaderRepository: FileReaderRepository = {
+        return FileReaderRepository()
+    }()
+    
+    
     private lazy var gestureRepository: GestureRepositoryProtocol = {
         return GestureRepository(
             webSocketClient: webSocketClient,
             remoteDataSource: remoteGestureDataSource
         )
+    }()
+    
+    private lazy var gitRepository: GitRepositoryProtocol = {
+        return DummyGitService()
     }()
     
     // MARK: - Domain Layer
@@ -35,6 +44,10 @@ class DependencyContainer {
     
     func makeCameraManagementUseCase() -> CameraManagementUseCase {
         return CameraManagementUseCase()
+    }
+    
+    func makeCommitDataModelUseCase() -> CommitDataModelUseCase {
+        return CommitDataModelUseCase(commitDataRepository: commitDataRepository, fileReader: fileReaderRepository, gitRepository: gitRepository)
     }
     
     // MARK: - Presentation Layer
