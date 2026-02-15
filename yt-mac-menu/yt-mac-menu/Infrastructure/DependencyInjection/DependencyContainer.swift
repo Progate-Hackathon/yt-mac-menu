@@ -53,7 +53,10 @@ class DependencyContainer {
     // MARK: - Presentation Layer
     
     private(set) lazy var appCoordinator: AppCoordinator = {
-        return AppCoordinator(gestureRepository: gestureRepository)
+        return AppCoordinator(
+            gestureRepository: gestureRepository,
+            commitDataModelUseCase: makeCommitDataModelUseCase()
+        )
     }()
     
     func makeAppCoordinator() -> AppCoordinator {
