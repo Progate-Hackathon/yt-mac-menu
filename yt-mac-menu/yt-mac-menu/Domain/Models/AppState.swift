@@ -1,7 +1,6 @@
 import Foundation
 
 enum AppState: Equatable {
-    case idle
     case listeningForSnap
     case snapDetected
     case detectingHeart
@@ -13,8 +12,7 @@ enum AppState: Equatable {
     
     static func == (lhs: AppState, rhs: AppState) -> Bool {
         switch (lhs, rhs) {
-        case (.idle, .idle),
-             (.listeningForSnap, .listeningForSnap),
+        case (.listeningForSnap, .listeningForSnap),
              (.snapDetected, .snapDetected),
              (.detectingHeart, .detectingHeart),
              (.heartDetected, .heartDetected),
@@ -31,8 +29,6 @@ enum AppState: Equatable {
     
     var description: String {
         switch self {
-        case .idle:
-            return "Idle"
         case .listeningForSnap:
             return "Listening for Snap"
         case .snapDetected:

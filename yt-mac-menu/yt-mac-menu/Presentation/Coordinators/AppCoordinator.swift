@@ -2,7 +2,7 @@ import Foundation
 import Combine
 
 class AppCoordinator: ObservableObject {
-    @Published private(set) var currentState: AppState = .idle
+    @Published private(set) var currentState: AppState = .listeningForSnap
     @Published private(set) var isCameraVisible: Bool = false
     
     private let gestureRepository: GestureRepositoryProtocol
@@ -29,7 +29,7 @@ class AppCoordinator: ObservableObject {
     
     func stop() {
         gestureRepository.disconnect()
-        transition(to: .idle)
+        transition(to: .listeningForSnap)
     }
     
     func handleWindowClose() {
@@ -99,7 +99,7 @@ class AppCoordinator: ObservableObject {
     
     private func handleDisconnected() {
         print("AppCoordinator: WebSocket切断")
-        transition(to: .idle)
+        transition(to: .listeningForSnap)
         isCameraVisible = false
     }
     
