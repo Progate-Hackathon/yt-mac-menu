@@ -42,6 +42,8 @@ struct GestureCameraView: View {
                         .font(.largeTitle)
                     Text("カメラの権限が必要です")
                 }
+            case .error(let error):
+                ErrorStateView(error: error)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

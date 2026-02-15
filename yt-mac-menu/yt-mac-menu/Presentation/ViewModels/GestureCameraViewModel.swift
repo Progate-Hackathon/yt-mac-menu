@@ -20,11 +20,26 @@ class GestureCameraViewModel: ObservableObject {
     private let gestureUseCase: GestureDetectionUseCase
     private var cancellables = Set<AnyCancellable>()
     
-    enum AppStatus: String {
+    enum AppStatus: Equatable {
         case waiting
         case detecting
         case success
         case unauthorized
+        case error(Error)
+        
+        static func == (lhs: AppStatus, rhs: AppStatus) -> Bool {
+            switch (lhs, rhs) {
+            case (.waiting, .waiting),
+                 (.detecting, .detecting),
+                 (.success, .success),
+                 (.unauthorized, .unauthorized):
+                return true
+            case (.error(let lhsError), .error(let rhsError)):
+                return lhsError.localizedDescription == rhsError.localizedDescription
+            default:
+                return false
+            }
+        }
     }
     
     init(
@@ -63,10 +78,14 @@ class GestureCameraViewModel: ObservableObject {
         Task {
             do {
                 try await commitDataModelUseCase.sendCommitData()
-                self.appState = .success
+                await MainActor.run {
+                    self.appState = .success
+                }
             } catch {
-                // TODO: AWS側への送信ロジックが完成したら　エラー処理を実装
                 print("GestureViewModel/\(#function) エラー発生 \(error.localizedDescription)")
+                await MainActor.run {
+                    self.appState = .error(error)
+                }
             }
         }
     }
@@ -75,7 +94,7 @@ class GestureCameraViewModel: ObservableObject {
         switch state {
         case .detecting:
             cameraUseCase.startCamera()
-        case .success:
+        case .success, .error:
             cameraUseCase.stopCamera()
         case .waiting, .unauthorized:
             break
