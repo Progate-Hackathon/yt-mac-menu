@@ -102,11 +102,22 @@ class CameraManagementUseCase {
         guard cameraState == .active else { return }
         
         sessionQueue.async { [weak self] in
-            guard let self = self, self.session.isRunning else { return }
-            self.session.stopRunning()
+            guard let self = self else { return }
+            
+            if self.session.isRunning {
+                print("CameraManagementUseCase: stopCamera() - stopping session")
+                self.session.stopRunning()
+            }
+            
+            // セッションの入力をクリーンアップしてリセット
+            print("CameraManagementUseCase: stopCamera() - removing all inputs")
+            for input in self.session.inputs {
+                self.session.removeInput(input)
+            }
             
             DispatchQueue.main.async {
                 self.cameraState = .inactive
+                print("CameraManagementUseCase: stopCamera() - state set to inactive")
             }
         }
     }
