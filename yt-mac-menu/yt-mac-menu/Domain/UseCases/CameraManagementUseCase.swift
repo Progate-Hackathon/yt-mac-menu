@@ -58,7 +58,9 @@ class CameraManagementUseCase {
         sessionQueue.async { [weak self] in
             guard let self = self else { return }
             
+            // セッションに入力が既にある場合でも、停止中なら問題なし
             if !self.session.inputs.isEmpty {
+                print("CameraManagementUseCase: setupCamera() - session has inputs, preserved")
                 return
             }
             
@@ -68,6 +70,7 @@ class CameraManagementUseCase {
                let input = try? AVCaptureDeviceInput(device: device),
                self.session.canAddInput(input) {
                 self.session.addInput(input)
+                print("CameraManagementUseCase: setupCamera() - input added")
             }
             
             self.session.commitConfiguration()
@@ -78,7 +81,15 @@ class CameraManagementUseCase {
         guard cameraState == .authorized || cameraState == .inactive else { return }
         
         sessionQueue.async { [weak self] in
-            guard let self = self, !self.session.isRunning else { return }
+            guard let self = self else { return }
+            
+            // セッションが既に実行中の場合はスキップ
+            if self.session.isRunning {
+                print("CameraManagementUseCase: startCamera() - already running")
+                return
+            }
+            
+            print("CameraManagementUseCase: startCamera() - starting session")
             self.session.startRunning()
             
             DispatchQueue.main.async {
