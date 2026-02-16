@@ -61,8 +61,6 @@ class GestureCameraViewModel: ObservableObject {
             .sink { [weak self] event in
                 guard let self = self else { return }
                 switch event {
-                    case .heartDetected:
-                        self.handleHeartDetected()
                     case .handCount(let detectedHandCount):
                         self.detectedHandCount = detectedHandCount
                     default:
@@ -72,24 +70,7 @@ class GestureCameraViewModel: ObservableObject {
             .store(in: &cancellables)
     }
     
-    
-    // AWS側にCommitDataを送信しappStateをsuccessに更新する
-    private func handleHeartDetected() {
-        Task {
-            do {
-                try await commitDataModelUseCase.sendCommitData()
-                await MainActor.run {
-                    self.appState = .success
-                }
-            } catch {
-                print("GestureViewModel/\(#function) エラー発生 \(error.localizedDescription)")
-                await MainActor.run {
-                    self.appState = .error(error)
-                }
-            }
-        }
-    }
-    
+
     private func handleStateChange(_ state: AppStatus) {
         switch state {
         case .detecting:

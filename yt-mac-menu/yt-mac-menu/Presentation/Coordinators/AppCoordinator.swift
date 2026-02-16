@@ -180,28 +180,27 @@ class AppCoordinator: ObservableObject {
             return
         }
         
-        print("AppCoordinator: ハート検出 → コミットデータ送信開始")
-        transition(to: .heartDetected)
-        
-        gestureRepository.sendCommand(.disableHeart)
-        
-        // コミットデータの送信を開始
-        sendCommitData()
+        Task {
+            print("AppCoordinator: ハート検出 → コミットデータ送信開始")
+            transition(to: .heartDetected)
+            
+            gestureRepository.sendCommand(.disableHeart)
+            
+            // コミットデータの送信を開始
+            await sendCommitData()
+        }
     }
     
-    private func sendCommitData() {
+    private func sendCommitData() async {
         transition(to: .committingData)
-        
-        Task {
-            do {
-                try await commitDataModelUseCase.sendCommitData()
-                await MainActor.run {
-                    self.handleCommitSuccess()
-                }
-            } catch {
-                await MainActor.run {
-                    self.handleCommitError(error)
-                }
+        do {
+            try await commitDataModelUseCase.sendCommitData()
+            await MainActor.run {
+                self.handleCommitSuccess()
+            }
+        } catch {
+            await MainActor.run {
+                self.handleCommitError(error)
             }
         }
     }
