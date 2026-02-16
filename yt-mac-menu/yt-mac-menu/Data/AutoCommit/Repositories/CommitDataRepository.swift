@@ -2,12 +2,12 @@ import Foundation
 import Combine
 
 class CommitDataRepository: CommitDataRepositoryProtocol {
-    private let RemoteCommitDataDataSource: RemoteCommitDataDataSourceProtocol
+    private let remoteCommitDataDataSource: RemoteCommitDataDataSourceProtocol
     
     init(
         remoteCommitDataDataSource: RemoteCommitDataDataSourceProtocol
     ) {
-        self.RemoteCommitDataDataSource = remoteCommitDataDataSource
+        self.remoteCommitDataDataSource = remoteCommitDataDataSource
     }
     
     func sendCommitData(_ data: CommitDataModel) async throws -> CommitSuccessModel {
@@ -27,19 +27,23 @@ class CommitDataRepository: CommitDataRepositoryProtocol {
         )
         
         do {
-            let successDTO = try await RemoteCommitDataDataSource.performGitOps(token: data.githubToken, dto: requestDTO)
+            let successDTO = try await remoteCommitDataDataSource.performGitOps(token: data.githubToken, dto: requestDTO)
             
             let urlString = "https://github.com/\(successDTO.params.owner)/\(successDTO.params.repository)"
             
+            guard let repositoryURL = URL(string: urlString) else {
+                throw CommitError.networkError(URLError(.badURL))
+            }
+            
             return CommitSuccessModel(
-                repositoryURL: URL(string: urlString)!,
+                repositoryURL: repositoryURL,
                 status: successDTO.status
             )
             
         } catch let dtoError as GitOpsErrorDTO {
             throw CommitError.remoteError(
                 message: dtoError.message,
-                detail: dtoError.details?.context?.description
+                detail: dtoError.details?.context?.values.joined(separator: ", ")
             )
             
         } catch {

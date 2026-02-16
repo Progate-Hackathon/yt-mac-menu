@@ -5,7 +5,7 @@ final class APIClient: APIClientProtocol {
     private let session = URLSession.shared
     
     func send<T: Decodable>(_ endpoint: APIEndpoint) async throws -> T {
-        var url = endpoint.baseURL.appendingPathComponent(endpoint.path)
+        let url = endpoint.baseURL.appendingPathComponent(endpoint.path)
         var request = URLRequest(url: url)
         request.httpMethod = endpoint.method.rawValue
         
