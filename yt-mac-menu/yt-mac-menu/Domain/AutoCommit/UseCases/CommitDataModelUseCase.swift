@@ -23,11 +23,11 @@ class CommitDataModelUseCase {
     }
     
     
-    func sendCommitData() async throws {
+    func sendCommitData() async throws -> CommitSuccessModel {
         let model = try createCommitDataModel()
         
         // TODO: CommitDataRepositoryで送信のロジックを描き終わったら、エラー処理をちゃんと実装する
-        try await commitDataRepository.sendCommitData(model)
+        return try await commitDataRepository.sendCommitData(model)
     }
     
     
