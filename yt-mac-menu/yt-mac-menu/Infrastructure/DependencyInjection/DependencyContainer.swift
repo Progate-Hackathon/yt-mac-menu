@@ -7,12 +7,8 @@ class DependencyContainer {
     
     // MARK: - Data Layer
     
-    private lazy var apiClient: APIClientProtocol = {
-        return APIClient()
-    }()
-    
     private lazy var remoteCommitDataDataSource: RemoteCommitDataDataSourceProtocol = {
-        return RemoteCommitDataDataSource(apiClient: apiClient)
+        return RemoteCommitDataDataSource()
     }()
     
     private lazy var commitDataRepository: CommitDataRepositoryProtocol = {
