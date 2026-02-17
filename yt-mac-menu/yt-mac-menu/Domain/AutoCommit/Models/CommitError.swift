@@ -1,7 +1,5 @@
 import Foundation
 
-import Foundation
-
 enum CommitError: LocalizedError {
     case invalidConfiguration(String)
     case requestCreationError(Error)
