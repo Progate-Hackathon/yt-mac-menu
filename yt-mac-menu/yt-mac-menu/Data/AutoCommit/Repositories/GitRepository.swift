@@ -18,9 +18,12 @@ class GitRepository: GitRepositoryProtocol {
         guard let remoteURL = executeGitCommand(arguments: ["config", "--get", "remote.origin.url"], at: projectPath) else {
             throw GitError.commandFailed("Failed to get remote URL")
         }
-        guard let repoName = extractRepositoryName(from: remoteURL) else {
+        let (repoName, _) = extractRepositoryNameAndOwnerName(from: remoteURL)
+        
+        guard let repoName else {
             throw GitError.invalidFormat("Failed to extract repository name")
         }
+        
         return repoName
     }
 
@@ -43,10 +46,17 @@ class GitRepository: GitRepositoryProtocol {
     
     /// リポジトリのオーナー名を取得する
     func getOwner(projectPath: String) throws -> String {
-        let repoName = try getRepositoryName(projectPath: projectPath)
-        guard let owner = repoName.split(separator: "/").first else {
-            throw GitError.invalidFormat("Failed to extract owner from repository name")
+        // ターミナルコマンド git config --get remote.origin.url
+        guard let remoteURL = executeGitCommand(arguments: ["config", "--get", "remote.origin.url"], at: projectPath) else {
+            throw GitError.commandFailed("Failed to get remote URL")
         }
+
+        let (_, owner) = extractRepositoryNameAndOwnerName(from: remoteURL)
+        
+        guard let owner else {
+            throw GitError.invalidFormat("Failed to extract repository name")
+        }
+        
         return String(owner)
     }
     
@@ -100,34 +110,53 @@ class GitRepository: GitRepositoryProtocol {
         }
     }
 
-    /// リモートURLから "username/repo" 形式のリポジトリ名を抽出する
-    private func extractRepositoryName(from remoteURL: String) -> String? {
-        var url = remoteURL
-
+    /// リモートURLから owner と repo を抽出する
+    private func extractRepositoryNameAndOwnerName(from remoteURL: String)
+    -> (repoName: String?, ownerName: String?) {
+        
+        var url = remoteURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // .git を削除
         if url.hasSuffix(".git") {
             url = String(url.dropLast(4))
         }
-
-        // SSH形式: git@github.com:username/repo
-        if url.contains("@") && url.contains(":") {
-            if let colonIndex = url.lastIndex(of: ":") {
-                let path = String(url[url.index(after: colonIndex)...])
-                return path.isEmpty ? nil : path
+        
+        // =========================
+        // SSH形式: git@github.com:owner/repo
+        // =========================
+        if url.contains("@"), let colonIndex = url.lastIndex(of: ":") {
+            let path = String(url[url.index(after: colonIndex)...])
+            let parts = path.split(separator: "/")
+            
+            if parts.count == 2 {
+                return (
+                    repoName: String(parts[1]),
+                    ownerName: String(parts[0])
+                )
             }
         }
-
-        // HTTPS形式: https://github.com/username/repo
+        
+        // =========================
+        // HTTPS形式: https://github.com/owner/repo
+        // =========================
         if let urlObj = URL(string: url) {
-            let components = urlObj.pathComponents.filter { $0 != "/" }
+            let components = urlObj.pathComponents
+                .filter { $0 != "/" }
+            
             if components.count >= 2 {
                 let owner = components[components.count - 2]
                 let repo = components[components.count - 1]
-                return "\(owner)/\(repo)"
+                
+                return (
+                    repoName: repo,
+                    ownerName: owner
+                )
             }
         }
-
+        
         print("[GitRepository] URLからリポジトリ名を抽出できませんでした: \(remoteURL)")
-        return nil
+        
+        return (repoName: nil, ownerName: nil)
     }
 }
 
