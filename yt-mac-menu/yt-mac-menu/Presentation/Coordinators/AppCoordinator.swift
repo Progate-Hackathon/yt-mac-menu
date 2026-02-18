@@ -24,11 +24,14 @@ class AppCoordinator: ObservableObject {
     }
     
     func start() {
+        // アクティブアプリの監視を開始
+        KeySender.startObservingActiveApp()
         gestureRepository.connect()
     }
     
     func stop() {
         gestureRepository.disconnect()
+        KeySender.stopObservingActiveApp()
         transition(to: .listeningForSnap)
     }
     
@@ -179,16 +182,40 @@ class AppCoordinator: ObservableObject {
             print("AppCoordinator: ハート検出されましたが、状態が不正です (\(currentState.description))")
             return
         }
-        
         Task {
-            print("AppCoordinator: ハート検出 → コミットデータ送信開始")
-            transition(to: .heartDetected)
+            // アクションタイプを取得
+            let actionType = UserDefaultsManager.shared.get(key: .actionType, type: ActionType.self) ?? .commit
             
+            print("AppCoordinator: ハート検出 → アクション実行 (\(actionType.displayName))")
+            transition(to: .heartDetected)
             gestureRepository.sendCommand(.disableHeart)
             
-            // コミットデータの送信を開始
-            await sendCommitData()
+            // アクションタイプに応じて処理を分岐
+            switch actionType {
+            case .commit:
+                await sendCommitData()
+            case .shortcut:
+                executeShortcut()
+            }
         }
+    }
+    
+    private func executeShortcut() {
+        // 保存されたホットキーを取得
+        guard let hotkey = UserDefaultsManager.shared.get(key: .hotkeyConfig, type: Hotkey.self) else {
+            print("AppCoordinator: ホットキーが設定されていません")
+            transition(to: .commitSuccess)
+            scheduleReset()
+            return
+        }
+        
+        print("AppCoordinator: ショートカット実行 - \(hotkey.displayString)")
+        
+        // 直前のアプリをアクティブにしてからショートカットを実行
+        KeySender.activatePreviousAppAndSimulateShortcut(keyCode: hotkey.keyCode, modifiers: hotkey.modifiers)
+        
+        transition(to: .commitSuccess)
+        scheduleReset()
     }
     
     private func sendCommitData() async {
