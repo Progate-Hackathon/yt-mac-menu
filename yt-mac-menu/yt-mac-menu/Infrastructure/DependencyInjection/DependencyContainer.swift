@@ -37,7 +37,7 @@ class DependencyContainer {
     }()
     
     private lazy var gitRepository: GitRepositoryProtocol = {
-        return DummyGitRepository()
+        return GitRepository()
     }()
     
     // MARK: - Domain Layer

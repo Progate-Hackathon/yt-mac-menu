@@ -53,6 +53,30 @@ class GestureCameraViewModel: ObservableObject {
         print("GestureCameraViewModel initialized")
         checkPermission()
         setupBindings()
+        setupCoordinatorBinding()
+    }
+    
+    private func setupCoordinatorBinding() {
+        // AppCoordinatorの状態を監視してappStateを更新
+        DependencyContainer.shared.appCoordinator.$currentState
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] coordinatorState in
+                self?.updateAppStatus(from: coordinatorState)
+            }
+            .store(in: &cancellables)
+    }
+    
+    private func updateAppStatus(from coordinatorState: AppState) {
+        switch coordinatorState {
+        case .detectingHeart:
+            appState = .detecting
+        case .commitSuccess:
+            appState = .success
+        case .commitError(let error):
+            appState = .error(error)
+        default:
+            break
+        }
     }
     
     private func setupBindings() {
@@ -61,8 +85,6 @@ class GestureCameraViewModel: ObservableObject {
             .sink { [weak self] event in
                 guard let self = self else { return }
                 switch event {
-                    case .heartDetected:
-                        self.handleHeartDetected()
                     case .handCount(let detectedHandCount):
                         self.detectedHandCount = detectedHandCount
                     default:
@@ -72,24 +94,7 @@ class GestureCameraViewModel: ObservableObject {
             .store(in: &cancellables)
     }
     
-    
-    // AWS側にCommitDataを送信しappStateをsuccessに更新する
-    private func handleHeartDetected() {
-        Task {
-            do {
-                try await commitDataModelUseCase.sendCommitData()
-                await MainActor.run {
-                    self.appState = .success
-                }
-            } catch {
-                print("GestureViewModel/\(#function) エラー発生 \(error.localizedDescription)")
-                await MainActor.run {
-                    self.appState = .error(error)
-                }
-            }
-        }
-    }
-    
+
     private func handleStateChange(_ state: AppStatus) {
         switch state {
         case .detecting:
