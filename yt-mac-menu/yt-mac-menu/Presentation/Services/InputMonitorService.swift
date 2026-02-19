@@ -28,10 +28,12 @@ final class InputMonitorService {
         }
     }
     
-    func stopMonitoring() {
-        if let monitor = localMonitor {
-            NSEvent.removeMonitor(monitor)
-            localMonitor = nil
+    nonisolated func stopMonitoring() {
+        Task { @MainActor in
+            if let monitor = localMonitor {
+                NSEvent.removeMonitor(monitor)
+                localMonitor = nil
+            }
         }
     }
     

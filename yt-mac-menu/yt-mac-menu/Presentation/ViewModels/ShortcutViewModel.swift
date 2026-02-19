@@ -25,6 +25,10 @@ final class ShortcutViewModel: ObservableObject {
         setupRecorderCallbacks()
     }
 
+    deinit {
+        inputMonitor.stopMonitoring()
+    }
+
     // MARK: - Setup
 
     private func setupRecorderCallbacks() {
