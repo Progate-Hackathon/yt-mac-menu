@@ -65,11 +65,40 @@ final class KeySender {
             NSLog("KeySender: 直前のアクティブアプリが見つかりません。ショートカットは実行されません。")
             return
         }
-        
-        // アプリをアクティブにして、完了後にショートカットを実行
+
+        var activationObserver: NSObjectProtocol?
+        var didFire = false
+
+        // 対象アプリがアクティブになった通知を待ち受ける
+        activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { notification in
+            guard
+                !didFire,
+                let activatedApp = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+                activatedApp.processIdentifier == app.processIdentifier
+            else { return }
+
+            didFire = true
+            if let obs = activationObserver {
+                NSWorkspace.shared.notificationCenter.removeObserver(obs)
+                activationObserver = nil
+            }
+            sendKeyEvent(keyCode: keyCode, modifiers: modifiers, to: app)
+        }
+
         app.activate()
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+
+        // タイムアウト: 2秒以内に通知が来なければ直接実行してオブザーバーを解除
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            guard !didFire else { return }
+            didFire = true
+            if let obs = activationObserver {
+                NSWorkspace.shared.notificationCenter.removeObserver(obs)
+                activationObserver = nil
+            }
             sendKeyEvent(keyCode: keyCode, modifiers: modifiers, to: app)
         }
     }
