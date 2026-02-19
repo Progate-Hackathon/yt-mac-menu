@@ -66,7 +66,7 @@ final class KeySender {
         }
         
         // アプリをアクティブにして、完了後にショートカットを実行
-        app.activate(options: .activateIgnoringOtherApps)
+        app.activate()
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             sendKeyEvent(keyCode: keyCode, modifiers: modifiers, to: app)
