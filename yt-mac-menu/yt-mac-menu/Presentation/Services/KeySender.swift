@@ -77,7 +77,16 @@ final class KeySender {
     /// 指定したアプリにキーイベントを送信
     private static func sendKeyEvent(keyCode: UInt16, modifiers: NSEvent.ModifierFlags, to app: NSRunningApplication) {
         guard AXIsProcessTrusted() else {
-            NSLog("KeySender: アクセシビリティ権限がありません。システム設定 > プライバシーとセキュリティ > アクセシビリティ でこのアプリを許可してください。")
+            NSLog("KeySender: アクセシビリティ権限がありません。")
+            let alert = NSAlert()
+            alert.messageText = "アクセシビリティ権限が必要です"
+            alert.informativeText = "ショートカットを実行するには、システム設定 > プライバシーとセキュリティ > アクセシビリティ でこのアプリを許可してください。"
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "システム設定を開く")
+            alert.addButton(withTitle: "キャンセル")
+            if alert.runModal() == .alertFirstButtonReturn {
+                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+            }
             return
         }
 
