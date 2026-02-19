@@ -154,14 +154,4 @@ final class KeySender {
         if modifiers.contains(.shift) { flags.insert(.maskShift) }
         return flags
     }
-    
-    /// 修飾キーを表示用文字列に変換
-    static func formatModifiers(_ modifiers: NSEvent.ModifierFlags) -> String {
-        var result = ""
-        if modifiers.contains(.control) { result += "⌃ " }
-        if modifiers.contains(.option) { result += "⌥ " }
-        if modifiers.contains(.shift) { result += "⇧ " }
-        if modifiers.contains(.command) { result += "⌘ " }
-        return result
-    }
 }
