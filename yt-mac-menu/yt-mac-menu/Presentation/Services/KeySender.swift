@@ -3,6 +3,7 @@ import CoreGraphics
 import AppKit
 
 /// キーボードショートカットを送信するユーティリティクラス
+@MainActor
 final class KeySender {
     
     // MARK: - Properties
