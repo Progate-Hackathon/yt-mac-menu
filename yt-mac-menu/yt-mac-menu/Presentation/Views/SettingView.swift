@@ -95,16 +95,26 @@ struct SettingsView: View {
 
 struct WindowAccessor: NSViewRepresentable {
     var callback: (NSWindow?) -> Void
-    
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
         DispatchQueue.main.async {
+            guard !context.coordinator.hasConfigured else { return }
+            context.coordinator.hasConfigured = true
             self.callback(view.window)
         }
         return view
     }
-    
+
     func updateNSView(_ nsView: NSView, context: Context) {}
+
+    class Coordinator {
+        var hasConfigured = false
+    }
 }
 
 #Preview {
