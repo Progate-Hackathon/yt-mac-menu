@@ -22,26 +22,21 @@ final class UserDefaultsManager {
     private init() {}
     
     func save<T: Codable>(key: UserDefaultKeys, value: T) {
-        // 構造体をJSONデータに変換して保存
         if let encoded = try? JSONEncoder().encode(value) {
             UserDefaults.standard.set(encoded, forKey: key.rawValue)
-            print("💾 [UserDefaults] 保存成功: \(key.rawValue)")
         } else {
-            print("⚠️ [UserDefaults] 保存失敗: エンコードできませんでした")
+            print("⚠️ [UserDefaults] 保存失敗: \(key.rawValue) をエンコードできませんでした")
         }
     }
-    
-    // 読み込み用
+
     func get<T: Codable>(key: UserDefaultKeys, type: T.Type) -> T? {
-        // データを読み込んで、構造体に復元する
         guard let data = UserDefaults.standard.data(forKey: key.rawValue) else {
             return nil
         }
-        
         if let decoded = try? JSONDecoder().decode(type, from: data) {
             return decoded
         } else {
-            print("⚠️ [UserDefaults] 読み込み失敗: デコードできませんでした")
+            print("⚠️ [UserDefaults] 読み込み失敗: \(key.rawValue) をデコードできませんでした")
             return nil
         }
     }
