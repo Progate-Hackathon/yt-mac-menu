@@ -7,7 +7,7 @@
 
 import Foundation
 
-class CommitDataModelUseCase {
+class SendCommitDataUseCase {
     private let commitDataRepository: CommitDataRepositoryProtocol
     private let fileReader: FileReaderRepositoryProtocol
     private let gitRepository: GitRepositoryProtocol

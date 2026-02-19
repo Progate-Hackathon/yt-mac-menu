@@ -54,8 +54,8 @@ class DependencyContainer {
         return cameraManagementUseCase
     }
     
-    func makeCommitDataModelUseCase() -> CommitDataModelUseCase {
-        return CommitDataModelUseCase(commitDataRepository: commitDataRepository, fileReader: fileReaderRepository, gitRepository: gitRepository)
+    func makeSendCommitDataUseCase() -> SendCommitDataUseCase {
+        return SendCommitDataUseCase(commitDataRepository: commitDataRepository, fileReader: fileReaderRepository, gitRepository: gitRepository)
     }
     
     // MARK: - Presentation Layer
@@ -63,7 +63,7 @@ class DependencyContainer {
     private(set) lazy var appCoordinator: AppCoordinator = {
         return AppCoordinator(
             gestureRepository: gestureRepository,
-            commitDataModelUseCase: makeCommitDataModelUseCase(),
+            sendCommitDataUseCase: makeSendCommitDataUseCase(),
             cameraManagementUseCase: makeCameraManagementUseCase()
         )
     }()

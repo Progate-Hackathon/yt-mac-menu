@@ -9,8 +9,14 @@ final class SettingsViewModel: ObservableObject {
     // Settings Data
     @Published var selectedProjectPath: String = ""
     @Published var githubToken: String = ""
+<<<<<<< HEAD
 
     // UI State
+=======
+    @Published var baseBranch: String = ""
+    @Published var shouldCreatePR: Bool = false
+    
+>>>>>>> develop
     @Published var hasUnsavedChanges: Bool = false
     @Published var errorMessage: String?
     @Published var isSaving = false
@@ -52,13 +58,52 @@ final class SettingsViewModel: ObservableObject {
         // Validation
         guard isProjectPathValid() else { return }
         guard await isGitHubTokenValid() else { return }
+<<<<<<< HEAD
         
+=======
+        guard isBaseBranchValid() else { return }
+
+>>>>>>> develop
         UserDefaultsManager.shared.save(key: .githubToken, value: githubToken)
         UserDefaultsManager.shared.save(key: .projectFolderPath, value: selectedProjectPath)
+        UserDefaultsManager.shared.save(key: .baseBranch, value: baseBranch)
+        UserDefaultsManager.shared.save(key: .shouldCreatePR, value: shouldCreatePR)
         
         errorMessage = nil
         hasUnsavedChanges = false
+<<<<<<< HEAD
         print("DEBUG: Settings saved successfully")
+=======
+    }
+ 
+}
+
+
+private extension SettingsViewModel {
+    private func observeSettingChanges() {
+        Publishers.CombineLatest4($selectedProjectPath, $githubToken, $baseBranch, $shouldCreatePR)
+            .removeDuplicates { lhs, rhs in
+                lhs.0 == rhs.0 && lhs.1 == rhs.1 && lhs.2 == rhs.2 && lhs.3 == rhs.3
+            }
+            .debounce(for: 0.5, scheduler: DispatchQueue.main)
+        
+            .sink { [weak self] _ in
+                
+                guard let self = self else { return }
+                hasUnsavedChanges = true
+            }
+            .store(in: &cancellables)
+    }
+
+    
+    
+    @MainActor
+    private func loadSettings() {
+        self.githubToken = UserDefaultsManager.shared.get(key: .githubToken) ?? ""
+        self.selectedProjectPath = UserDefaultsManager.shared.get(key: .projectFolderPath) ?? ""
+        self.baseBranch = UserDefaultsManager.shared.get(key: .baseBranch) ?? "main"
+        self.shouldCreatePR = UserDefaultsManager.shared.getBool(key: .shouldCreatePR)
+>>>>>>> develop
     }
     
     // MARK: - Validation
@@ -93,6 +138,26 @@ final class SettingsViewModel: ObservableObject {
         
         return true
     }
+<<<<<<< HEAD
+=======
+    
+    private func isBaseBranchValid() -> Bool {
+        guard !baseBranch.isEmpty else {
+            showError("ベースブランチ名が空です")
+            return false
+        }
+        
+        // ブランチ名の基本的なバリデーション
+        let invalidChars = CharacterSet(charactersIn: " ~^:?*[\\")
+        if baseBranch.rangeOfCharacter(from: invalidChars) != nil {
+            showError("ブランチ名に無効な文字が含まれています")
+            return false
+        }
+        
+        return true
+    }
+
+>>>>>>> develop
     
     private func isGitHubTokenValid() async -> Bool {
         do {

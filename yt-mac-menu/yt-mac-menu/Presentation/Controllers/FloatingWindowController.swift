@@ -28,7 +28,7 @@ class FloatingWindowController: NSObject, NSWindowDelegate {
         
         let padding: CGFloat = 5
         
-        let xPos = screenRect.maxX - width - padding
+        let xPos = (screenRect.maxX/2) - (width/2)
         let yPos = screenRect.maxY - height - padding
         
         let newWindow = NSWindow(

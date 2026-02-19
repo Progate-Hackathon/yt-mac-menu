@@ -8,11 +8,11 @@ struct GestureCameraView: View {
         let container = DependencyContainer.shared
         let cameraUseCase = container.makeCameraManagementUseCase()
         let gestureUseCase = container.makeGestureDetectionUseCase()
-        let commitDataModelUseCase = container.makeCommitDataModelUseCase()
+        let sendCommitDataUseCase = container.makeSendCommitDataUseCase()
         _gestureCameraViewModel = StateObject(wrappedValue: GestureCameraViewModel(
             cameraUseCase: cameraUseCase,
             gestureUseCase: gestureUseCase,
-            commitDataModelUseCase: commitDataModelUseCase
+            sendCommitDataUseCase: sendCommitDataUseCase
             
         ))
     }

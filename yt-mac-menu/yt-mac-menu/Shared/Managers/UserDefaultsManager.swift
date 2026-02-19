@@ -10,8 +10,13 @@ import Foundation
 enum UserDefaultKeys: String {
     case githubToken
     case projectFolderPath
+<<<<<<< HEAD
     case hotkeyConfig
     case actionType
+=======
+    case baseBranch
+    case shouldCreatePR
+>>>>>>> develop
 }
 
 final class UserDefaultsManager {
@@ -29,6 +34,7 @@ final class UserDefaultsManager {
         }
     }
     
+<<<<<<< HEAD
     // 読み込み用
     func get<T: Codable>(key: UserDefaultKeys, type: T.Type) -> T? {
         // データを読み込んで、構造体に復元する
@@ -38,9 +44,23 @@ final class UserDefaultsManager {
         
         if let decoded = try? JSONDecoder().decode(type, from: data) {
             return decoded
+=======
+    func save(key: UserDefaultKeys, value: Bool) {
+        UserDefaults.standard.set(value, forKey: key.rawValue)
+    }
+    
+    func get(key: UserDefaultKeys) -> String? {
+        let savedValue = UserDefaults.standard.string(forKey: key.rawValue)
+        if let savedValue {
+            return savedValue
+>>>>>>> develop
         } else {
             print("⚠️ [UserDefaults] 読み込み失敗: デコードできませんでした")
             return nil
         }
+    }
+    
+    func getBool(key: UserDefaultKeys) -> Bool {
+        return UserDefaults.standard.bool(forKey: key.rawValue)
     }
 }

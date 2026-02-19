@@ -2,6 +2,11 @@ import SwiftUI
 
 struct SettingsView: View {
     @StateObject private var settingsViewModel = SettingsViewModel()
+    
+    private var basicSettingsAreSet: Bool {
+        !settingsViewModel.selectedProjectPath.isEmpty && !settingsViewModel.githubToken.isEmpty
+    }
+    
     var body: some View {
         TabView {
             VStack {
@@ -19,6 +24,7 @@ struct SettingsView: View {
             }
             .tag("general")
             
+<<<<<<< HEAD
             VStack {
                 ShortcutView()
             }
@@ -27,7 +33,30 @@ struct SettingsView: View {
                 Label("ショートカット", systemImage: "hand.draw")
             }
             .tag("shortcuts")
+=======
+
+            
+            if basicSettingsAreSet {
+                VStack {
+                    Divider()
+                        .padding(.vertical, 8)
+                    
+                    Text("高度な設定")
+                        .font(.headline)
+                    
+                    BaseBranchSectionView(baseBranch: $settingsViewModel.baseBranch)
+                    CreatePRSectionView(shouldCreatePR: $settingsViewModel.shouldCreatePR)
+                }
+                .transition(.opacity)
+            }
+            
+            errorMessage
+            
+            saveButton
+
+>>>>>>> develop
         }
+        .animation(.default, value: basicSettingsAreSet)
         .frame(width: 480)
         .background(.ultraThinMaterial)
         .background(Color.black.opacity(0.1))
