@@ -14,6 +14,13 @@ final class InputMonitorService {
         stopMonitoring() // 重複防止
         
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [weak self] event in
+            // Escapeキー(keyCode 53)は通してキャンセルできるようにする
+            if event.type == .keyDown && event.keyCode == 53 {
+                Task { @MainActor in
+                    self?.stopMonitoring()
+                }
+                return event
+            }
             Task { @MainActor in
                 self?.handleEvent(event)
             }

@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 @MainActor
 final class ShortcutViewModel: ObservableObject {

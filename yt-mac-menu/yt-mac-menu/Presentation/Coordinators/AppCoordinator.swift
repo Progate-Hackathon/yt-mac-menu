@@ -201,20 +201,17 @@ class AppCoordinator: ObservableObject {
     }
     
     private func executeShortcut() {
-        // 保存されたホットキーを取得
         guard let hotkey = UserDefaultsManager.shared.get(key: .hotkeyConfig, type: Hotkey.self) else {
             print("AppCoordinator: ホットキーが設定されていません")
-            transition(to: .commitSuccess)
+            transition(to: .shortcutSuccess)
             scheduleReset()
             return
         }
-        
+
         print("AppCoordinator: ショートカット実行 - \(hotkey.displayString)")
-        
-        // 直前のアプリをアクティブにしてからショートカットを実行
         KeySender.activatePreviousAppAndSimulateShortcut(keyCode: hotkey.keyCode, modifiers: hotkey.modifiers)
-        
-        transition(to: .commitSuccess)
+
+        transition(to: .shortcutSuccess)
         scheduleReset()
     }
     

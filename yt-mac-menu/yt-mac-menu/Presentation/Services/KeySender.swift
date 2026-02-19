@@ -61,6 +61,7 @@ final class KeySender {
     /// 直前のアプリをアクティブにしてショートカットを実行
     static func activatePreviousAppAndSimulateShortcut(keyCode: UInt16, modifiers: NSEvent.ModifierFlags) {
         guard let app = previousActiveApp else {
+            NSLog("KeySender: 直前のアクティブアプリが見つかりません。ショートカットは実行されません。")
             return
         }
         

@@ -3,7 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @StateObject private var settingsViewModel = SettingsViewModel()
     var body: some View {
-        TabView{
+        TabView {
             VStack {
                 ProjectPathSectionView(selectedProjectPath: $settingsViewModel.selectedProjectPath)
                 GitHubTokenSectionView(gitHubAccessToken: $settingsViewModel.githubToken)
