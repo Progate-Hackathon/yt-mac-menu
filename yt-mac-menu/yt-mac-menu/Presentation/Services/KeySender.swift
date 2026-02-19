@@ -1,4 +1,4 @@
-import Foundation
+@preconcurrency import Foundation
 import CoreGraphics
 import AppKit
 
@@ -16,6 +16,9 @@ final class KeySender {
     
     /// ワークスペース通知の監視トークン
     private static var observer: NSObjectProtocol?
+
+    /// ショートカット送信用の一時オブザーバー
+    private static var shortcutActivationObserver: NSObjectProtocol?
     
     // MARK: - Observer
     
@@ -35,16 +38,16 @@ final class KeySender {
             object: nil,
             queue: .main
         ) { notification in
-            guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else {
-                return
-            }
-            
-            if isSelfApp(app) {
-                // 自アプリがアクティブになった → 直前のアプリを保存
-                previousActiveApp = lastNonSelfActiveApp
-            } else {
-                // 他のアプリがアクティブになった → 記録
-                lastNonSelfActiveApp = app
+            MainActor.assumeIsolated {
+                guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else {
+                    return
+                }
+
+                if isSelfApp(app) {
+                    previousActiveApp = lastNonSelfActiveApp
+                } else {
+                    lastNonSelfActiveApp = app
+                }
             }
         }
     }
@@ -66,40 +69,42 @@ final class KeySender {
             return
         }
 
-        var activationObserver: NSObjectProtocol?
         var didFire = false
 
         // 対象アプリがアクティブになった通知を待ち受ける
-        activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
+        shortcutActivationObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification,
             object: nil,
             queue: .main
         ) { notification in
-            guard
-                !didFire,
-                let activatedApp = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-                activatedApp.processIdentifier == app.processIdentifier
-            else { return }
+            MainActor.assumeIsolated {
+                guard
+                    !didFire,
+                    let activatedApp = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+                    activatedApp.processIdentifier == app.processIdentifier
+                else { return }
 
-            didFire = true
-            if let obs = activationObserver {
-                NSWorkspace.shared.notificationCenter.removeObserver(obs)
-                activationObserver = nil
+                didFire = true
+                if let obs = shortcutActivationObserver {
+                    NSWorkspace.shared.notificationCenter.removeObserver(obs)
+                    shortcutActivationObserver = nil
+                }
+                sendKeyEvent(keyCode: keyCode, modifiers: modifiers, to: app)
             }
-            sendKeyEvent(keyCode: keyCode, modifiers: modifiers, to: app)
         }
 
         app.activate()
 
-        // タイムアウト: 2秒以内に通知が来なければ直接実行してオブザーバーを解除
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            guard !didFire else { return }
-            didFire = true
-            if let obs = activationObserver {
-                NSWorkspace.shared.notificationCenter.removeObserver(obs)
-                activationObserver = nil
+            MainActor.assumeIsolated {
+                guard !didFire else { return }
+                didFire = true
+                if let obs = shortcutActivationObserver {
+                    NSWorkspace.shared.notificationCenter.removeObserver(obs)
+                    shortcutActivationObserver = nil
+                }
+                sendKeyEvent(keyCode: keyCode, modifiers: modifiers, to: app)
             }
-            sendKeyEvent(keyCode: keyCode, modifiers: modifiers, to: app)
         }
     }
     
