@@ -53,7 +53,15 @@ struct ShortcutView: View {
                             }
                             .buttonStyle(.plain)
                             .popover(isPresented: $showRecorderPopover, arrowEdge: .top) {
-                                RecorderOverlaySectionView(viewModel: viewModel, isPresented: $showRecorderPopover)
+                                RecorderOverlaySectionView(
+                                    isSuccessState: viewModel.isSuccessState,
+                                    isRecording: viewModel.isRecording,
+                                    currentHotkey: viewModel.currentHotkey,
+                                    tempModifiers: viewModel.tempModifiers,
+                                    tempKeyDisplay: viewModel.tempKeyDisplay,
+                                    isPresented: $showRecorderPopover,
+                                    stopRecording: viewModel.stopRecording
+                                )
                             }
                         }
                         

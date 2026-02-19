@@ -19,21 +19,6 @@ final class UserDefaultsManager {
     
     private init() {}
     
-    func save(key: UserDefaultKeys, value: String) {
-        UserDefaults.standard.set(value, forKey: key.rawValue)
-    }
-    
-    
-    func get(key: UserDefaultKeys) -> String? {
-        let savedValue = UserDefaults.standard.string(forKey: key.rawValue)
-        if let savedValue {
-            return savedValue
-        } else {
-            print("キー：\(key.rawValue)の値は保存されていません")
-            return nil
-        }
-    }
-    
     func save<T: Codable>(key: UserDefaultKeys, value: T) {
         // 構造体をJSONデータに変換して保存
         if let encoded = try? JSONEncoder().encode(value) {

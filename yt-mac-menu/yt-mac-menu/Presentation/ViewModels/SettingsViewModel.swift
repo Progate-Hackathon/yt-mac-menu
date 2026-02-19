@@ -31,8 +31,8 @@ final class SettingsViewModel: ObservableObject {
     
     init() {
         // 初期値ロード
-        self.githubToken = UserDefaultsManager.shared.get(key: .githubToken) ?? ""
-        self.selectedProjectPath = UserDefaultsManager.shared.get(key: .projectFolderPath) ?? ""
+        self.githubToken = UserDefaultsManager.shared.get(key: .githubToken, type: String.self) ?? ""
+        self.selectedProjectPath = UserDefaultsManager.shared.get(key: .projectFolderPath, type: String.self) ?? ""
         self.currentHotkey = UserDefaultsManager.shared.get(key: .hotkeyConfig, type: Hotkey.self)
             ?? Hotkey(modifiers: .option, keyCode: 49, keyDisplay: "Space")
         self.actionType = UserDefaultsManager.shared.get(key: .actionType, type: ActionType.self) ?? .commit

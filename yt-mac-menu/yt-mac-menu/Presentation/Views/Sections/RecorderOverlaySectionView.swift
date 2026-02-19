@@ -1,8 +1,13 @@
 import SwiftUI
 
 struct RecorderOverlaySectionView: View {
-    @ObservedObject var viewModel: SettingsViewModel
+    let isSuccessState: Bool
+    let isRecording: Bool
+    let currentHotkey: Hotkey
+    let tempModifiers: NSEvent.ModifierFlags
+    let tempKeyDisplay: String
     @Binding var isPresented: Bool
+    let stopRecording: () -> Void
     
     var body: some View {
         ZStack {
@@ -11,24 +16,24 @@ struct RecorderOverlaySectionView: View {
                 .frame(width: 260, height: 80)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
-                        .stroke(viewModel.isSuccessState ? Color.green : Color.clear, lineWidth: 2)
+                        .stroke(isSuccessState ? Color.green : Color.clear, lineWidth: 2)
                 )
             
             VStack(spacing: 8) {
-                if viewModel.isSuccessState {
+                if isSuccessState {
                     successView
                 } else {
                     recordingView
                 }
             }
         }
-        .onChange(of: viewModel.isRecording) { _, isRecording in
+        .onChange(of: isRecording) { _, isRecording in
             if !isRecording {
                 isPresented = false
             }
         }
         .onDisappear {
-            viewModel.stopRecording()
+            stopRecording()
         }
     }
     
@@ -36,17 +41,12 @@ struct RecorderOverlaySectionView: View {
     
     private var successView: some View {
         VStack(spacing: 8) {
-            HStack {
-                Text(KeySender.formatModifiers(viewModel.currentHotkey.modifiers) + viewModel.currentHotkey.keyDisplay)
-                    .font(.system(size: 16, weight: .bold))
-                    .padding(4)
-                    .background(Color.green.opacity(0.2))
-                    .cornerRadius(4)
-                    .foregroundColor(.green)
-                
-                // レイアウト崩れ防止の不可視要素
-                Text("Space").hidden()
-            }
+            Text(currentHotkey.displayString)
+                .font(.system(size: 16, weight: .bold))
+                .padding(4)
+                .background(Color.green.opacity(0.2))
+                .cornerRadius(4)
+                .foregroundColor(.green)
             Text("新しいショートカットが設定されました！")
                 .font(.caption)
                 .foregroundColor(.white)
@@ -56,23 +56,23 @@ struct RecorderOverlaySectionView: View {
     private var recordingView: some View {
         VStack(spacing: 5) {
             HStack(spacing: 4) {
-                if viewModel.tempModifiers.isEmpty && viewModel.tempKeyDisplay.isEmpty {
+                if tempModifiers.isEmpty && tempKeyDisplay.isEmpty {
                     Text("記録中...")
                         .foregroundColor(.gray)
                 } else {
-                    Text(KeySender.formatModifiers(viewModel.tempModifiers))
+                    Text(KeySender.formatModifiers(tempModifiers))
                         .font(.system(size: 20, weight: .bold))
                         .foregroundColor(.white)
                     
-                    if !viewModel.tempKeyDisplay.isEmpty {
-                        Text(viewModel.tempKeyDisplay)
+                    if !tempKeyDisplay.isEmpty {
+                        Text(tempKeyDisplay)
                             .font(.system(size: 20, weight: .bold))
                             .foregroundColor(.white)
                     }
                 }
             }
             
-            if viewModel.tempModifiers.isEmpty && viewModel.tempKeyDisplay.isEmpty {
+            if tempModifiers.isEmpty && tempKeyDisplay.isEmpty {
                 Text("キーを押してショートカットを設定")
                     .font(.caption)
                     .foregroundColor(.secondary)
