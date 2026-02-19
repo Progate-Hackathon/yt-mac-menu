@@ -9,14 +9,10 @@ final class SettingsViewModel: ObservableObject {
     // Settings Data
     @Published var selectedProjectPath: String = ""
     @Published var githubToken: String = ""
-<<<<<<< HEAD
-
-    // UI State
-=======
     @Published var baseBranch: String = ""
     @Published var shouldCreatePR: Bool = false
-    
->>>>>>> develop
+
+    // UI State
     @Published var hasUnsavedChanges: Bool = false
     @Published var errorMessage: String?
     @Published var isSaving = false
@@ -26,20 +22,19 @@ final class SettingsViewModel: ObservableObject {
     // MARK: - Lifecycle
     
     init() {
-        self.githubToken = UserDefaultsManager.shared.get(key: .githubToken, type: String.self) ?? ""
-        self.selectedProjectPath = UserDefaultsManager.shared.get(key: .projectFolderPath, type: String.self) ?? ""
-
+        loadSettings()
         setupChangeObserver()
     }
     
     // MARK: - Setup
 
     private func setupChangeObserver() {
-        // Token/Pathの変更を監視してunsavedフラグを立てる
-        Publishers.CombineLatest($selectedProjectPath, $githubToken)
+        Publishers.CombineLatest4($selectedProjectPath, $githubToken, $baseBranch, $shouldCreatePR)
             .dropFirst()
             .debounce(for: 0.5, scheduler: RunLoop.main)
-            .removeDuplicates { $0.0 == $1.0 && $0.1 == $1.1 }
+            .removeDuplicates { lhs, rhs in
+                lhs.0 == rhs.0 && lhs.1 == rhs.1 && lhs.2 == rhs.2 && lhs.3 == rhs.3
+            }
             .sink { [weak self] _ in
                 self?.hasUnsavedChanges = true
             }
@@ -58,12 +53,8 @@ final class SettingsViewModel: ObservableObject {
         // Validation
         guard isProjectPathValid() else { return }
         guard await isGitHubTokenValid() else { return }
-<<<<<<< HEAD
-        
-=======
         guard isBaseBranchValid() else { return }
 
->>>>>>> develop
         UserDefaultsManager.shared.save(key: .githubToken, value: githubToken)
         UserDefaultsManager.shared.save(key: .projectFolderPath, value: selectedProjectPath)
         UserDefaultsManager.shared.save(key: .baseBranch, value: baseBranch)
@@ -71,39 +62,17 @@ final class SettingsViewModel: ObservableObject {
         
         errorMessage = nil
         hasUnsavedChanges = false
-<<<<<<< HEAD
         print("DEBUG: Settings saved successfully")
-=======
     }
- 
 }
 
-
 private extension SettingsViewModel {
-    private func observeSettingChanges() {
-        Publishers.CombineLatest4($selectedProjectPath, $githubToken, $baseBranch, $shouldCreatePR)
-            .removeDuplicates { lhs, rhs in
-                lhs.0 == rhs.0 && lhs.1 == rhs.1 && lhs.2 == rhs.2 && lhs.3 == rhs.3
-            }
-            .debounce(for: 0.5, scheduler: DispatchQueue.main)
-        
-            .sink { [weak self] _ in
-                
-                guard let self = self else { return }
-                hasUnsavedChanges = true
-            }
-            .store(in: &cancellables)
-    }
-
-    
-    
     @MainActor
     private func loadSettings() {
-        self.githubToken = UserDefaultsManager.shared.get(key: .githubToken) ?? ""
-        self.selectedProjectPath = UserDefaultsManager.shared.get(key: .projectFolderPath) ?? ""
-        self.baseBranch = UserDefaultsManager.shared.get(key: .baseBranch) ?? "main"
+        self.githubToken = UserDefaultsManager.shared.get(key: .githubToken, type: String.self) ?? ""
+        self.selectedProjectPath = UserDefaultsManager.shared.get(key: .projectFolderPath, type: String.self) ?? ""
+        self.baseBranch = UserDefaultsManager.shared.get(key: .baseBranch, type: String.self) ?? "main"
         self.shouldCreatePR = UserDefaultsManager.shared.getBool(key: .shouldCreatePR)
->>>>>>> develop
     }
     
     // MARK: - Validation
@@ -138,8 +107,6 @@ private extension SettingsViewModel {
         
         return true
     }
-<<<<<<< HEAD
-=======
     
     private func isBaseBranchValid() -> Bool {
         guard !baseBranch.isEmpty else {
@@ -156,8 +123,6 @@ private extension SettingsViewModel {
         
         return true
     }
-
->>>>>>> develop
     
     private func isGitHubTokenValid() async -> Bool {
         do {

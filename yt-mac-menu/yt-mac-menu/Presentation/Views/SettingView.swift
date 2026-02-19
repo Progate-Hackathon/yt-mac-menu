@@ -12,6 +12,19 @@ struct SettingsView: View {
             VStack {
                 ProjectPathSectionView(selectedProjectPath: $settingsViewModel.selectedProjectPath)
                 GitHubTokenSectionView(gitHubAccessToken: $settingsViewModel.githubToken)
+                if basicSettingsAreSet {
+                    VStack {
+                        Divider()
+                            .padding(.vertical, 8)
+                        
+                        Text("高度な設定")
+                            .font(.headline)
+                        
+                        BaseBranchSectionView(baseBranch: $settingsViewModel.baseBranch)
+                        CreatePRSectionView(shouldCreatePR: $settingsViewModel.shouldCreatePR)
+                    }
+                    .transition(.opacity)
+                }
                 
                 errorMessage
                 
@@ -24,7 +37,6 @@ struct SettingsView: View {
             }
             .tag("general")
             
-<<<<<<< HEAD
             VStack {
                 ShortcutView()
             }
@@ -33,28 +45,6 @@ struct SettingsView: View {
                 Label("ショートカット", systemImage: "hand.draw")
             }
             .tag("shortcuts")
-=======
-
-            
-            if basicSettingsAreSet {
-                VStack {
-                    Divider()
-                        .padding(.vertical, 8)
-                    
-                    Text("高度な設定")
-                        .font(.headline)
-                    
-                    BaseBranchSectionView(baseBranch: $settingsViewModel.baseBranch)
-                    CreatePRSectionView(shouldCreatePR: $settingsViewModel.shouldCreatePR)
-                }
-                .transition(.opacity)
-            }
-            
-            errorMessage
-            
-            saveButton
-
->>>>>>> develop
         }
         .animation(.default, value: basicSettingsAreSet)
         .frame(width: 480)
