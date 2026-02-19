@@ -10,6 +10,8 @@ import Foundation
 enum UserDefaultKeys: String {
     case githubToken
     case projectFolderPath
+    case baseBranch
+    case shouldCreatePR
 }
 
 final class UserDefaultsManager {
