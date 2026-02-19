@@ -76,6 +76,11 @@ final class KeySender {
     
     /// 指定したアプリにキーイベントを送信
     private static func sendKeyEvent(keyCode: UInt16, modifiers: NSEvent.ModifierFlags, to app: NSRunningApplication) {
+        guard AXIsProcessTrusted() else {
+            NSLog("KeySender: アクセシビリティ権限がありません。システム設定 > プライバシーとセキュリティ > アクセシビリティ でこのアプリを許可してください。")
+            return
+        }
+
         let pid = app.processIdentifier
         let source = CGEventSource(stateID: .hidSystemState)
         
