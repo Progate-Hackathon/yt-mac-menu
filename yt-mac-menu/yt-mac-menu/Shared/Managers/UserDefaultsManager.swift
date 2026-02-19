@@ -23,6 +23,9 @@ final class UserDefaultsManager {
         UserDefaults.standard.set(value, forKey: key.rawValue)
     }
     
+    func save(key: UserDefaultKeys, value: Bool) {
+        UserDefaults.standard.set(value, forKey: key.rawValue)
+    }
     
     func get(key: UserDefaultKeys) -> String? {
         let savedValue = UserDefaults.standard.string(forKey: key.rawValue)
@@ -32,5 +35,9 @@ final class UserDefaultsManager {
             print("キー：\(key.rawValue)の値は保存されていません")
             return nil
         }
+    }
+    
+    func getBool(key: UserDefaultKeys) -> Bool {
+        return UserDefaults.standard.bool(forKey: key.rawValue)
     }
 }
