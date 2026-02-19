@@ -1,12 +1,12 @@
 struct GitOpsRequestDTO: Encodable {
     
     
-    init(commitDataModel: CommitDataModel){
+    init(commitDataModel: CommitDataModel, baseBranch: String?, shouldCreatePR: Bool){
         self.owner = commitDataModel.owner
         self.repository = commitDataModel.repository
-        self.baseBranch = nil
+        self.baseBranch = baseBranch
         self.headBranch = commitDataModel.headBranch
-        self.createPr = nil
+        self.createPr = shouldCreatePR
         self.files = commitDataModel.files
     }
     
