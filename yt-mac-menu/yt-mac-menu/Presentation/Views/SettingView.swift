@@ -55,14 +55,13 @@ struct SettingsView: View {
             window.isOpaque = false
             window.backgroundColor = .clear
             window.titlebarAppearsTransparent = true
-            window.level = .floating
+            window.collectionBehavior = .moveToActiveSpace
         })
         .onAppear {
             NSApp.activate(ignoringOtherApps: true)
             DispatchQueue.main.async {
-                if let window = NSApp.windows.first(where: { $0.isVisible && $0.level == .floating }) {
+                if let window = NSApp.windows.first(where: { $0.isVisible && !$0.isMiniaturized }) {
                     window.makeKeyAndOrderFront(nil)
-                    window.orderFrontRegardless()
                 }
             }
         }
