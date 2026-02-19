@@ -11,6 +11,8 @@ import Combine
 class SettingsViewModel: ObservableObject {
     @Published var selectedProjectPath: String = ""
     @Published var githubToken: String = ""
+    @Published var baseBranch: String = ""
+    @Published var shouldCreatePR: Bool = false
     
     @Published var hasUnsavedChanges: Bool = false
     @Published var errorMessage: String?
@@ -31,9 +33,12 @@ class SettingsViewModel: ObservableObject {
         guard hasUnsavedChanges else { return }
         guard isProjectPathValid() else { return }
         guard await isGitHubTokenValid() else { return }
+        guard isBaseBranchValid() else { return }
 
         UserDefaultsManager.shared.save(key: .githubToken, value: githubToken)
         UserDefaultsManager.shared.save(key: .projectFolderPath, value: selectedProjectPath)
+        UserDefaultsManager.shared.save(key: .baseBranch, value: baseBranch)
+        UserDefaultsManager.shared.save(key: .shouldCreatePR, value: shouldCreatePR)
         
         errorMessage = nil
         hasUnsavedChanges = false
@@ -44,9 +49,9 @@ class SettingsViewModel: ObservableObject {
 
 private extension SettingsViewModel {
     private func observeSettingChanges() {
-        Publishers.CombineLatest($selectedProjectPath, $githubToken)
+        Publishers.CombineLatest4($selectedProjectPath, $githubToken, $baseBranch, $shouldCreatePR)
             .removeDuplicates { lhs, rhs in
-                lhs.0 == rhs.0 && lhs.1 == rhs.1
+                lhs.0 == rhs.0 && lhs.1 == rhs.1 && lhs.2 == rhs.2 && lhs.3 == rhs.3
             }
             .debounce(for: 0.5, scheduler: DispatchQueue.main)
         
@@ -64,6 +69,8 @@ private extension SettingsViewModel {
     private func loadSettings() {
         self.githubToken = UserDefaultsManager.shared.get(key: .githubToken) ?? ""
         self.selectedProjectPath = UserDefaultsManager.shared.get(key: .projectFolderPath) ?? ""
+        self.baseBranch = UserDefaultsManager.shared.get(key: .baseBranch) ?? "main"
+        self.shouldCreatePR = UserDefaultsManager.shared.getBool(key: .shouldCreatePR)
     }
     
     
@@ -93,6 +100,22 @@ private extension SettingsViewModel {
         guard fileManager.fileExists(atPath: gitPath, isDirectory: &isGitDirectory),
               isGitDirectory.boolValue else {
             showError("このフォルダはGitリポジトリではありません")
+            return false
+        }
+        
+        return true
+    }
+    
+    private func isBaseBranchValid() -> Bool {
+        guard !baseBranch.isEmpty else {
+            showError("ベースブランチ名が空です")
+            return false
+        }
+        
+        // ブランチ名の基本的なバリデーション
+        let invalidChars = CharacterSet(charactersIn: " ~^:?*[\\")
+        if baseBranch.rangeOfCharacter(from: invalidChars) != nil {
+            showError("ブランチ名に無効な文字が含まれています")
             return false
         }
         
