@@ -5,8 +5,7 @@ struct ShortcutView: View {
     @State private var showRecorderPopover = false
     
     var body: some View {
-        ZStack {
-            VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 20) {
                 
                 // セクション: アクションタイプ選択
                 VStack(alignment: .leading, spacing: 8) {
@@ -87,10 +86,7 @@ struct ShortcutView: View {
                         }
                     }
                 }
-            }
-            .padding(40)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
