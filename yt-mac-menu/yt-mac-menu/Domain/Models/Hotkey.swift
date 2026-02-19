@@ -20,12 +20,7 @@ struct Hotkey: Codable, Equatable {
     
     // 表示用
     var displayString: String {
-        var string = ""
-        if modifiers.contains(.control) { string += "⌃ " }
-        if modifiers.contains(.option) { string += "⌥ " }
-        if modifiers.contains(.shift) { string += "⇧ " }
-        if modifiers.contains(.command) { string += "⌘ " }
-        string += keyDisplay
-        return string
+        let mod = modifiers.formattedString
+        return mod.isEmpty ? keyDisplay : mod + " " + keyDisplay
     }
 }

@@ -20,7 +20,7 @@ struct SettingsView: View {
             .tag("general")
             
             VStack {
-                ShortcutView(viewModel: settingsViewModel)
+                ShortcutView()
             }
             .padding()
             .tabItem {
@@ -36,13 +36,16 @@ struct SettingsView: View {
             window.isOpaque = false
             window.backgroundColor = .clear
             window.titlebarAppearsTransparent = true
-            
-            // ウィンドウを最前面に表示
             window.level = .floating
-            window.makeKeyAndOrderFront(nil)
         })
         .onAppear {
             NSApp.activate(ignoringOtherApps: true)
+            DispatchQueue.main.async {
+                if let window = NSApp.windows.first(where: { $0.isVisible && $0.level == .floating }) {
+                    window.makeKeyAndOrderFront(nil)
+                    window.orderFrontRegardless()
+                }
+            }
         }
     }
     

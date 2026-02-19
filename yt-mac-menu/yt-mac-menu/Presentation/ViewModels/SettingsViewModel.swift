@@ -9,40 +9,25 @@ final class SettingsViewModel: ObservableObject {
     // Settings Data
     @Published var selectedProjectPath: String = ""
     @Published var githubToken: String = ""
-    @Published var currentHotkey: Hotkey
-    @Published var actionType: ActionType
-    
+
     // UI State
     @Published var hasUnsavedChanges: Bool = false
     @Published var errorMessage: String?
     @Published var isSaving = false
-    
-    // Recorder State
-    @Published var isRecording: Bool = false
-    @Published var isSuccessState: Bool = false
-    @Published var tempModifiers: NSEvent.ModifierFlags = []
-    @Published var tempKeyDisplay: String = ""
-    
-    // Dependencies
-    private let inputMonitor = InputMonitorService()
+
     private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Lifecycle
     
     init() {
-        // 初期値ロード
         self.githubToken = UserDefaultsManager.shared.get(key: .githubToken, type: String.self) ?? ""
         self.selectedProjectPath = UserDefaultsManager.shared.get(key: .projectFolderPath, type: String.self) ?? ""
-        self.currentHotkey = UserDefaultsManager.shared.get(key: .hotkeyConfig, type: Hotkey.self)
-            ?? Hotkey(modifiers: .option, keyCode: 49, keyDisplay: "Space")
-        self.actionType = UserDefaultsManager.shared.get(key: .actionType, type: ActionType.self) ?? .commit
-        
-        setupRecorderCallbacks()
+
         setupChangeObserver()
     }
     
     // MARK: - Setup
-    
+
     private func setupChangeObserver() {
         // Token/Pathの変更を監視してunsavedフラグを立てる
         Publishers.CombineLatest($selectedProjectPath, $githubToken)
@@ -55,19 +40,8 @@ final class SettingsViewModel: ObservableObject {
             .store(in: &cancellables)
     }
     
-    private func setupRecorderCallbacks() {
-        inputMonitor.onUpdate = { [weak self] modifiers, keyDisplay in
-            self?.tempModifiers = modifiers
-            self?.tempKeyDisplay = keyDisplay
-        }
-        
-        inputMonitor.onComplete = { [weak self] modifiers, keyCode, display in
-            self?.completeRecording(modifiers: modifiers, keyCode: keyCode, display: display)
-        }
-    }
-
     // MARK: - Actions (Saving)
-    
+
     /// Token/Pathの保存（保存ボタン用）
     func saveSettings() async {
         isSaving = true
@@ -85,58 +59,6 @@ final class SettingsViewModel: ObservableObject {
         errorMessage = nil
         hasUnsavedChanges = false
         print("DEBUG: Settings saved successfully")
-    }
-    
-    private func saveHotkey(_ hotkey: Hotkey) {
-        UserDefaultsManager.shared.save(key: .hotkeyConfig, value: hotkey)
-        print("DEBUG: Hotkey saved: \(hotkey.displayString)")
-    }
-    
-    func saveActionType(_ type: ActionType) {
-        UserDefaultsManager.shared.save(key: .actionType, value: type)
-        actionType = type
-        print("DEBUG: ActionType saved: \(type.displayName)")
-    }
-    
-    // MARK: - Actions (Recorder)
-    
-    func startRecording() {
-        isRecording = true
-        isSuccessState = false
-        tempModifiers = []
-        tempKeyDisplay = ""
-        
-        inputMonitor.startMonitoring()
-    }
-    
-    func stopRecording() {
-        inputMonitor.stopMonitoring()
-        isRecording = false
-    }
-    
-    private func completeRecording(modifiers: NSEvent.ModifierFlags, keyCode: UInt16, display: String) {
-        // 新しいHotkeyを作成して即座に保存
-        let newHotkey = Hotkey(modifiers: modifiers, keyCode: keyCode, keyDisplay: display)
-        saveHotkey(newHotkey)
-        
-        // プロパティ更新
-        currentHotkey = newHotkey
-        isSuccessState = true
-        
-        // 1秒後にUIをリセット（@MainActorクラス内のTaskは自動的にMainActorを継承）
-        Task {
-            try? await Task.sleep(for: .seconds(1))
-            stopRecording()
-            tempKeyDisplay = ""
-            tempModifiers = []
-        }
-    }
-    
-    // MARK: - Actions (Test)
-    
-    func runTestShortcut() {
-        print("Executing shortcut: \(currentHotkey.displayString)")
-        KeySender.activatePreviousAppAndSimulateShortcut(keyCode: currentHotkey.keyCode, modifiers: currentHotkey.modifiers)
     }
     
     // MARK: - Validation

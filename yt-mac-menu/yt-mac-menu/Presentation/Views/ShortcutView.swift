@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ShortcutView: View {
-    @ObservedObject var viewModel: SettingsViewModel
+    @StateObject private var viewModel = ShortcutViewModel()
     @State private var showRecorderPopover = false
     
     var body: some View {
@@ -13,10 +13,7 @@ struct ShortcutView: View {
                     Text("ハート検出時のアクション")
                         .font(.headline)
                     
-                    Picker("", selection: Binding(
-                        get: { viewModel.actionType },
-                        set: { viewModel.saveActionType($0) }
-                    )) {
+                    Picker("", selection: $viewModel.actionType) {
                         ForEach(ActionType.allCases, id: \.self) { type in
                             Text(type.displayName).tag(type)
                         }
@@ -24,6 +21,9 @@ struct ShortcutView: View {
                     .pickerStyle(.segmented)
                     .labelsHidden()
                     .frame(width: 200)
+                    .onChange(of: viewModel.actionType) { _, newValue in
+                        viewModel.saveActionType(newValue)
+                    }
                     
                     Text(viewModel.actionType.description)
                         .font(.caption)
@@ -54,11 +54,11 @@ struct ShortcutView: View {
                             .buttonStyle(.plain)
                             .popover(isPresented: $showRecorderPopover, arrowEdge: .top) {
                                 RecorderOverlaySectionView(
-                                    isSuccessState: viewModel.isSuccessState,
-                                    isRecording: viewModel.isRecording,
+                                    isRecording: $viewModel.isRecording,
+                                    isSuccessState: $viewModel.isSuccessState,
+                                    tempModifiers: $viewModel.tempModifiers,
+                                    tempKeyDisplay: $viewModel.tempKeyDisplay,
                                     currentHotkey: viewModel.currentHotkey,
-                                    tempModifiers: viewModel.tempModifiers,
-                                    tempKeyDisplay: viewModel.tempKeyDisplay,
                                     isPresented: $showRecorderPopover,
                                     stopRecording: viewModel.stopRecording
                                 )
@@ -95,9 +95,9 @@ struct ShortcutView: View {
 }
 
 // MARK: - Preview
-struct RaycastSettingsView_Previews: PreviewProvider {
+struct ShortcutView_Previews: PreviewProvider {
     static var previews: some View {
-        ShortcutView(viewModel: SettingsViewModel())
+        ShortcutView()
             .preferredColorScheme(.dark)
     }
 }

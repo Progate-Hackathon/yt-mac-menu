@@ -1,11 +1,11 @@
 import SwiftUI
 
 struct RecorderOverlaySectionView: View {
-    let isSuccessState: Bool
-    let isRecording: Bool
+    @Binding var isRecording: Bool
+    @Binding var isSuccessState: Bool
+    @Binding var tempModifiers: NSEvent.ModifierFlags
+    @Binding var tempKeyDisplay: String
     let currentHotkey: Hotkey
-    let tempModifiers: NSEvent.ModifierFlags
-    let tempKeyDisplay: String
     @Binding var isPresented: Bool
     let stopRecording: () -> Void
     
@@ -60,7 +60,7 @@ struct RecorderOverlaySectionView: View {
                     Text("記録中...")
                         .foregroundColor(.gray)
                 } else {
-                    Text(KeySender.formatModifiers(tempModifiers))
+                    Text(tempModifiers.formattedString)
                         .font(.system(size: 20, weight: .bold))
                         .foregroundColor(.white)
                     
