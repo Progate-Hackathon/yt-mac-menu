@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @StateObject private var settingsViewModel = SettingsViewModel()
+    @State private var settingsWindow: NSWindow?
     
     private var basicSettingsAreSet: Bool {
         !settingsViewModel.selectedProjectPath.isEmpty && !settingsViewModel.githubToken.isEmpty
@@ -55,14 +56,16 @@ struct SettingsView: View {
             window.isOpaque = false
             window.backgroundColor = .clear
             window.titlebarAppearsTransparent = true
-            window.collectionBehavior = .moveToActiveSpace
+            window.collectionBehavior = [.moveToActiveSpace]
+            settingsWindow = window
         })
         .onAppear {
             NSApp.activate(ignoringOtherApps: true)
             DispatchQueue.main.async {
-                if let window = NSApp.windows.first(where: { $0.isVisible && !$0.isMiniaturized }) {
-                    window.makeKeyAndOrderFront(nil)
-                }
+                // 保存済みのウィンドウ参照を使い、アクティブなSpaceへ確実に移動させる
+                settingsWindow?.collectionBehavior = [.moveToActiveSpace]
+                settingsWindow?.makeKeyAndOrderFront(nil)
+                settingsWindow?.orderFrontRegardless()
             }
         }
     }
