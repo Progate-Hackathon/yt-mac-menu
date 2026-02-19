@@ -6,7 +6,7 @@ class AppCoordinator: ObservableObject {
     @Published private(set) var isCameraVisible: Bool = false
     
     private let gestureRepository: GestureRepositoryProtocol
-    private let commitDataModelUseCase: CommitDataModelUseCase
+    private let sendCommitDataUseCase: SendCommitDataUseCase
     private let cameraManagementUseCase: CameraManagementUseCase
     private var cancellables = Set<AnyCancellable>()
     private var resetWorkItem: DispatchWorkItem?
@@ -14,11 +14,11 @@ class AppCoordinator: ObservableObject {
     
     init(
         gestureRepository: GestureRepositoryProtocol,
-        commitDataModelUseCase: CommitDataModelUseCase,
+        sendCommitDataUseCase: SendCommitDataUseCase,
         cameraManagementUseCase: CameraManagementUseCase
     ) {
         self.gestureRepository = gestureRepository
-        self.commitDataModelUseCase = commitDataModelUseCase
+        self.sendCommitDataUseCase = sendCommitDataUseCase
         self.cameraManagementUseCase = cameraManagementUseCase
         setupBindings()
     }
@@ -194,7 +194,7 @@ class AppCoordinator: ObservableObject {
     private func sendCommitData() async {
         transition(to: .committingData)
         do {
-            try await commitDataModelUseCase.sendCommitData()
+            try await sendCommitDataUseCase.sendCommitData()
             await MainActor.run {
                 self.handleCommitSuccess()
             }

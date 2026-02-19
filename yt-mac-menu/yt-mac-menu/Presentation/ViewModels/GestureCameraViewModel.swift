@@ -15,7 +15,7 @@ class GestureCameraViewModel: ObservableObject {
         cameraUseCase.session
     }
     
-    private let commitDataModelUseCase: CommitDataModelUseCase
+    private let sendCommitDataUseCase: SendCommitDataUseCase
     
     private let gestureUseCase: GestureDetectionUseCase
     private var cancellables = Set<AnyCancellable>()
@@ -45,11 +45,11 @@ class GestureCameraViewModel: ObservableObject {
     init(
         cameraUseCase: CameraManagementUseCase,
         gestureUseCase: GestureDetectionUseCase,
-        commitDataModelUseCase: CommitDataModelUseCase
+        sendCommitDataUseCase: SendCommitDataUseCase
     ) {
         self.cameraUseCase = cameraUseCase
         self.gestureUseCase = gestureUseCase
-        self.commitDataModelUseCase = commitDataModelUseCase
+        self.sendCommitDataUseCase = sendCommitDataUseCase
         print("GestureCameraViewModel initialized")
         checkPermission()
         setupBindings()
