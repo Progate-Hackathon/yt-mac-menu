@@ -82,27 +82,36 @@ class SendCommitDataUseCase {
     private func getChangedFilesData(changedFilePaths: [String], projectPath: String) throws -> [String: String?] {
         var filePathAndData: [String: String?] = [:]
         
+        // プロジェクトフォルダ名を取得
+        let projectFolderName = (projectPath as NSString).lastPathComponent
+        
         for changedFilePath in changedFilePaths {
+            // プロジェクトフォルダ名がパスに含まれている場合は削除
+            var cleanedPath = changedFilePath
+            if changedFilePath.hasPrefix(projectFolderName + "/") {
+                cleanedPath = String(changedFilePath.dropFirst(projectFolderName.count + 1))
+            }
+            
             // プロジェクトパスからの相対パスを絶対パスに変換
             let absolutePath = (projectPath as NSString).appendingPathComponent(changedFilePath)
             
             do {
                 let fileData = try fileReader.readFile(atPath: absolutePath)
-                filePathAndData[changedFilePath] = fileData
-                print("ファイル読み込み成功: \(changedFilePath)")
+                filePathAndData[cleanedPath] = fileData
+                print("ファイル読み込み成功: \(cleanedPath)")
                 
             } catch FileReaderError.fileNotExist {
                 // 削除されたファイルの場合のみnilを許可
-                filePathAndData[changedFilePath] = nil
-                print("削除されたファイル: \(changedFilePath)")
+                filePathAndData[cleanedPath] = nil
+                print("削除されたファイル: \(cleanedPath)")
                 
             } catch {
                 // 削除以外のエラーは致命的エラーとして処理
                 // 権限エラー、エンコーディングエラーなどを削除として扱わない
-                print("ファイル読み込み失敗: \(changedFilePath)")
+                print("ファイル読み込み失敗: \(cleanedPath)")
                 print("エラー内容: \(error.localizedDescription)")
                 throw CommitDataModelUseCaseError.fileReadError(
-                    path: changedFilePath,
+                    path: cleanedPath,
                     reason: error.localizedDescription
                 )
             }
