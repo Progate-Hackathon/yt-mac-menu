@@ -47,7 +47,7 @@ class AppCoordinator: ObservableObject {
         cameraManagementUseCase.stopCamera()
         
         switch currentState {
-        case .detectingHeart, .heartDetected, .committingData, .commitSuccess, .commitError:
+            case .detectingHeart, .heartDetected, .committingData, .commitSuccess, .commitError, .shortcutSuccess:
             // ハート検出中、処理中、またはエラー状態から閉じる場合は、スナップ待機モードに戻る
             print("AppCoordinator: スナップ待機モードへリセット")
             
