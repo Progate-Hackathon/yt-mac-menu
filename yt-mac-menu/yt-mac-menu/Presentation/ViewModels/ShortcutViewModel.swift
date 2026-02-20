@@ -26,7 +26,9 @@ final class ShortcutViewModel: ObservableObject {
     }
 
     deinit {
-        inputMonitor.stopMonitoring()
+        Task { @MainActor in
+            inputMonitor.stopMonitoring()
+        }
     }
 
     // MARK: - Setup
@@ -58,14 +60,18 @@ final class ShortcutViewModel: ObservableObject {
     }
 
     private func completeRecording(modifiers: NSEvent.ModifierFlags, keyCode: UInt16, display: String) {
+        print("ShortcutViewModel: ショートカット記録完了 - \(display), keyCode: \(keyCode), modifiers: \(modifiers)")
         let newHotkey = Hotkey(modifiers: modifiers, keyCode: keyCode, keyDisplay: display)
+        print("ShortcutViewModel: 保存前のホットキー: \(currentHotkey.displayString)")
         saveHotkey(newHotkey)
         currentHotkey = newHotkey
+        print("ShortcutViewModel: 保存後のホットキー: \(currentHotkey.displayString)")
         isSuccessState = true
 
-        Task {
+        Task { @MainActor in
             try? await Task.sleep(nanoseconds: 1_000_000_000)
             stopRecording()
+            isSuccessState = false
             tempKeyDisplay = ""
             tempModifiers = []
         }
@@ -74,7 +80,15 @@ final class ShortcutViewModel: ObservableObject {
     // MARK: - Actions
 
     func saveHotkey(_ hotkey: Hotkey) {
+        print("ShortcutViewModel: UserDefaultsに保存中 - \(hotkey.displayString)")
         UserDefaultsManager.shared.save(key: .hotkeyConfig, value: hotkey)
+        
+        // 保存確認
+        if let saved = UserDefaultsManager.shared.get(key: .hotkeyConfig, type: Hotkey.self) {
+            print("ShortcutViewModel: 保存確認OK - \(saved.displayString)")
+        } else {
+            print("ShortcutViewModel: ⚠️ 保存確認NG - UserDefaultsから読み取れません")
+        }
     }
 
     func saveActionType(_ type: ActionType) {

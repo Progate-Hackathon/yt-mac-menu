@@ -5,7 +5,7 @@ struct RecorderOverlaySectionView: View {
     @Binding var isSuccessState: Bool
     @Binding var tempModifiers: NSEvent.ModifierFlags
     @Binding var tempKeyDisplay: String
-    let currentHotkey: Hotkey
+    @Binding var currentHotkey: Hotkey
     @Binding var isPresented: Bool
     let stopRecording: () -> Void
     

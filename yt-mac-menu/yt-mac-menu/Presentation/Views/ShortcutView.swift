@@ -57,7 +57,7 @@ struct ShortcutView: View {
                                     isSuccessState: $viewModel.isSuccessState,
                                     tempModifiers: $viewModel.tempModifiers,
                                     tempKeyDisplay: $viewModel.tempKeyDisplay,
-                                    currentHotkey: viewModel.currentHotkey,
+                                    currentHotkey: $viewModel.currentHotkey,
                                     isPresented: $showRecorderPopover,
                                     stopRecording: viewModel.stopRecording
                                 )

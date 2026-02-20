@@ -24,6 +24,8 @@ final class UserDefaultsManager {
     func save<T: Codable>(key: UserDefaultKeys, value: T) {
         if let encoded = try? JSONEncoder().encode(value) {
             UserDefaults.standard.set(encoded, forKey: key.rawValue)
+            UserDefaults.standard.synchronize()  // 即座に書き込みを強制
+            print("[UserDefaults] 保存成功: \(key.rawValue)")
         } else {
             print("⚠️ [UserDefaults] 保存失敗: \(key.rawValue) をエンコードできませんでした")
         }
