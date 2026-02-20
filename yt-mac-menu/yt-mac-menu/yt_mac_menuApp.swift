@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import AppKit
 
 @main
 struct yt_mac_menuApp: App {
