@@ -7,6 +7,7 @@ enum AppState: Equatable {
     case heartDetected
     case committingData
     case commitSuccess
+    case shortcutSuccess
     case commitError(Error)
     case resetting
     
@@ -18,6 +19,7 @@ enum AppState: Equatable {
              (.heartDetected, .heartDetected),
              (.committingData, .committingData),
              (.commitSuccess, .commitSuccess),
+             (.shortcutSuccess, .shortcutSuccess),
              (.resetting, .resetting):
             return true
         case (.commitError(let lhsError), .commitError(let rhsError)):
@@ -41,6 +43,8 @@ enum AppState: Equatable {
             return "Committing Data"
         case .commitSuccess:
             return "Commit Success"
+        case .shortcutSuccess:
+            return "Shortcut Success"
         case .commitError:
             return "Commit Error"
         case .resetting:

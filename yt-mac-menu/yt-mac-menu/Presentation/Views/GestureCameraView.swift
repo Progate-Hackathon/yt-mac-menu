@@ -20,9 +20,9 @@ struct GestureCameraView: View {
     var body: some View {
         ZStack {
             switch gestureCameraViewModel.appState {
-            case .detecting:
+                case .detecting:
                     ActiveCameraView(session: gestureCameraViewModel.session, detectedHandCount: $gestureCameraViewModel.detectedHandCount)
-            case .success:
+                case .success, .shortcutSuccess:
                 StatusFeedbackSectionView(
                     title: "送信完了しました",
                     subtitle: "3秒後に閉じます...",

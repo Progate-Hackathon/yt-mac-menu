@@ -14,7 +14,7 @@ class CommitDataRepository: CommitDataRepositoryProtocol {
         
         // PR作成がONの場合はベースブランチが必須
         if shouldCreatePR {
-            guard let branch = UserDefaultsManager.shared.get(key: .baseBranch), !branch.isEmpty else {
+            guard let branch = UserDefaultsManager.shared.get(key: .baseBranch, type: String.self), !branch.isEmpty else {
                 throw CommitError.invalidConfiguration("ベースブランチが設定されていません。設定画面で設定してください。")
             }
             baseBranch = branch

@@ -2,42 +2,71 @@ import SwiftUI
 
 struct SettingsView: View {
     @StateObject private var settingsViewModel = SettingsViewModel()
+    @State private var settingsWindow: NSWindow?
     
     private var basicSettingsAreSet: Bool {
         !settingsViewModel.selectedProjectPath.isEmpty && !settingsViewModel.githubToken.isEmpty
     }
     
     var body: some View {
-        VStack {
-            ProjectPathSectionView(selectedProjectPath: $settingsViewModel.selectedProjectPath)
-            GitHubTokenSectionView(gitHubAccessToken: $settingsViewModel.githubToken)
-            
-
-            
-            if basicSettingsAreSet {
-                VStack {
-                    Divider()
-                        .padding(.vertical, 8)
-                    
-                    Text("高度な設定")
-                        .font(.headline)
-                    
-                    BaseBranchSectionView(baseBranch: $settingsViewModel.baseBranch)
-                    CreatePRSectionView(shouldCreatePR: $settingsViewModel.shouldCreatePR)
+        TabView {
+            VStack {
+                ProjectPathSectionView(selectedProjectPath: $settingsViewModel.selectedProjectPath)
+                GitHubTokenSectionView(gitHubAccessToken: $settingsViewModel.githubToken)
+                if basicSettingsAreSet {
+                    VStack {
+                        Divider()
+                            .padding(.vertical, 8)
+                        
+                        Text("高度な設定")
+                            .font(.headline)
+                        
+                        BaseBranchSectionView(baseBranch: $settingsViewModel.baseBranch)
+                        CreatePRSectionView(shouldCreatePR: $settingsViewModel.shouldCreatePR)
+                    }
+                    .transition(.opacity)
                 }
-                .transition(.opacity)
+                
+                errorMessage
+                
+                saveButton
+                
             }
+            .padding()
+            .tabItem {
+                Label("一般", systemImage: "gear")
+            }
+            .tag("general")
             
-            errorMessage
-            
-            saveButton
-
+            VStack {
+                ShortcutView()
+            }
+            .padding()
+            .tabItem {
+                Label("ショートカット", systemImage: "hand.draw")
+            }
+            .tag("shortcuts")
         }
         .animation(.default, value: basicSettingsAreSet)
         .frame(width: 480)
-        .padding()
+        .background(.ultraThinMaterial)
+        .background(Color.black.opacity(0.1))
+        .background(WindowAccessor { window in
+            guard let window = window else { return }
+            window.isOpaque = false
+            window.backgroundColor = .clear
+            window.titlebarAppearsTransparent = true
+            window.collectionBehavior = [.moveToActiveSpace]
+            settingsWindow = window
+        })
         .onAppear {
-            NSApp.activate()
+            NSApp.activate(ignoringOtherApps: true)
+            DispatchQueue.main.async {
+                // 保存済みのウィンドウ参照を使い、アクティブなSpaceへ確実に移動させる
+                settingsWindow?.collectionBehavior = [.moveToActiveSpace]
+                settingsWindow?.makeKeyAndOrderFront(nil)
+                settingsWindow?.orderFrontRegardless()
+            }
         }
     }
     
@@ -57,7 +86,7 @@ struct SettingsView: View {
                 await settingsViewModel.saveSettings()
                 NSApp.keyWindow?.makeFirstResponder(nil)
             }
-
+            
         } label: {
             Text("保存")
         }
@@ -66,6 +95,29 @@ struct SettingsView: View {
     }
 }
 
+struct WindowAccessor: NSViewRepresentable {
+    var callback: (NSWindow?) -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async {
+            guard !context.coordinator.hasConfigured else { return }
+            context.coordinator.hasConfigured = true
+            self.callback(view.window)
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    class Coordinator {
+        var hasConfigured = false
+    }
+}
 
 #Preview {
     SettingsView()

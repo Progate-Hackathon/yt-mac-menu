@@ -25,6 +25,7 @@ class GestureCameraViewModel: ObservableObject {
         case detecting
         case success
         case unauthorized
+        case shortcutSuccess
         case error(Error)
         
         static func == (lhs: AppStatus, rhs: AppStatus) -> Bool {
@@ -74,6 +75,8 @@ class GestureCameraViewModel: ObservableObject {
             appState = .success
         case .commitError(let error):
             appState = .error(error)
+        case .shortcutSuccess:
+            appState = .shortcutSuccess
         default:
             break
         }
@@ -99,7 +102,7 @@ class GestureCameraViewModel: ObservableObject {
         switch state {
         case .detecting:
             cameraUseCase.startCamera()
-        case .success, .error:
+            case .success, .shortcutSuccess, .error:
             cameraUseCase.stopCamera()
         case .waiting, .unauthorized:
             break

@@ -10,6 +10,8 @@ import Foundation
 enum UserDefaultKeys: String {
     case githubToken
     case projectFolderPath
+    case hotkeyConfig
+    case actionType
     case baseBranch
     case shouldCreatePR
 }
@@ -19,25 +21,33 @@ final class UserDefaultsManager {
     
     private init() {}
     
-    func save(key: UserDefaultKeys, value: String) {
-        UserDefaults.standard.set(value, forKey: key.rawValue)
-    }
-    
-    func save(key: UserDefaultKeys, value: Bool) {
-        UserDefaults.standard.set(value, forKey: key.rawValue)
-    }
-    
-    func get(key: UserDefaultKeys) -> String? {
-        let savedValue = UserDefaults.standard.string(forKey: key.rawValue)
-        if let savedValue {
-            return savedValue
+    func save<T: Codable>(key: UserDefaultKeys, value: T) {
+        if let encoded = try? JSONEncoder().encode(value) {
+            UserDefaults.standard.set(encoded, forKey: key.rawValue)
+            UserDefaults.standard.synchronize()  // 即座に書き込みを強制
+            print("[UserDefaults] 保存成功: \(key.rawValue)")
         } else {
-            print("キー：\(key.rawValue)の値は保存されていません")
+            print("⚠️ [UserDefaults] 保存失敗: \(key.rawValue) をエンコードできませんでした")
+        }
+    }
+
+    func get<T: Codable>(key: UserDefaultKeys, type: T.Type) -> T? {
+        guard let data = UserDefaults.standard.data(forKey: key.rawValue) else {
+            return nil
+        }
+        if let decoded = try? JSONDecoder().decode(type, from: data) {
+            return decoded
+        } else {
+            print("⚠️ [UserDefaults] 読み込み失敗: \(key.rawValue) をデコードできませんでした")
             return nil
         }
     }
     
     func getBool(key: UserDefaultKeys) -> Bool {
         return UserDefaults.standard.bool(forKey: key.rawValue)
+    }
+
+    func save(key: UserDefaultKeys, value: Bool) {
+        UserDefaults.standard.set(value, forKey: key.rawValue)
     }
 }
