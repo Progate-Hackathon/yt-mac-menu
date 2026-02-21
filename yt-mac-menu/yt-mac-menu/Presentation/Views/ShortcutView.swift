@@ -54,21 +54,24 @@ struct ShortcutView: View {
 
             // セクション: アクションタイプ選択
             VStack(alignment: .leading, spacing: 8) {
-                Text("ハート検出時のアクション")
-                    .font(.headline)
-                
-                Picker("", selection: $viewModel.actionType) {
-                    ForEach(ActionType.allCases, id: \.self) { type in
-                        Text(type.displayName).tag(type)
+                HStack {
+                    Text("ハート検出時のアクション")
+                        .font(.headline)
+                        .frame(width: 200, alignment: .leading)
+
+                    Picker("", selection: $viewModel.actionType) {
+                        ForEach(ActionType.allCases, id: \.self) { type in
+                            Text(type.displayName).tag(type)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .frame(width: 200)
+                    .onChange(of: viewModel.actionType) { _, newValue in
+                        viewModel.saveActionType(newValue)
                     }
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(width: 200)
-                .onChange(of: viewModel.actionType) { _, newValue in
-                    viewModel.saveActionType(newValue)
-                }
-                
+
                 Text(viewModel.actionType.description)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -130,6 +133,29 @@ struct ShortcutView: View {
                             .background(RoundedRectangle(cornerRadius: 6).fill(Color.blue.opacity(0.2)))
                         }
                         .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            if viewModel.actionType == .command {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("💻 実行コマンド")
+                            .font(.headline)
+                            .frame(width: 200, alignment: .leading)
+
+                        TextField("例: open -a Safari", text: $viewModel.commandString)
+                            .font(.system(size: 13, weight: .medium))
+                            .textFieldStyle(.plain)
+                            .padding(.horizontal, 8)
+                            .frame(width: 200, height: 32)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(.white.opacity(0.1))
+                                    .shadow(color: .black.opacity(0.2), radius: 1, x: 0, y: 1)
+                            )
+                            .onSubmit { viewModel.saveCommand() }
+                            .onChange(of: viewModel.commandString) { _, _ in viewModel.saveCommand() }
                     }
                 }
             }

@@ -3,7 +3,7 @@ import Combine
 
 class AppViewModel: ObservableObject {
     @Published var isCameraVisible: Bool = false
-    
+
     private let coordinator: AppCoordinator
     private var cancellables = Set<AnyCancellable>()
     

@@ -103,43 +103,21 @@ class GitRepository: GitRepositoryProtocol {
     // MARK: - Private Method
     
     private func executeGitCommand(arguments: [String], at path: String) -> String? {
-        let process = Process()
-        process.currentDirectoryURL = URL(fileURLWithPath: path)
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-        process.arguments = arguments
+        let result = ShellExecutor.executeSync(
+            command: "/usr/bin/git " + arguments.joined(separator: " "),
+            workingDirectory: path
+        )
 
-        let stdoutPipe = Pipe()
-        let stderrPipe = Pipe()
-        process.standardOutput = stdoutPipe
-        process.standardError = stderrPipe
-
-        do {
-            try process.run()
-            process.waitUntilExit()
-
-            // プロセス終了後に同期的に読み取る
-            let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-            let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-
-            let stderrString = String(data: stderrData, encoding: .utf8)?
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-
-            guard process.terminationStatus == 0 else {
-                if let stderrString, !stderrString.isEmpty {
-                    print("[GitRepository] Gitコマンドが終了コードで失敗しました \(process.terminationStatus): git \(arguments.joined(separator: " ")), stderr: \(stderrString)")
-                } else {
-                    print("[GitRepository] Gitコマンドが終了コードで失敗しました \(process.terminationStatus): git \(arguments.joined(separator: " "))")
-                }
-                return nil
+        guard result.isSuccess else {
+            if !result.stderr.isEmpty {
+                print("[GitRepository] Gitコマンドが終了コードで失敗しました \(result.exitCode): git \(arguments.joined(separator: " ")), stderr: \(result.stderr)")
+            } else {
+                print("[GitRepository] Gitコマンドが終了コードで失敗しました \(result.exitCode): git \(arguments.joined(separator: " "))")
             }
-
-            let stdoutString = String(data: stdoutData, encoding: .utf8)?
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            return stdoutString
-        } catch {
-            print("[GitRepository] Gitコマンドエラー: \(error.localizedDescription) — git \(arguments.joined(separator: " "))")
             return nil
         }
+
+        return result.stdout.isEmpty ? nil : result.stdout
     }
 
     /// リモートURLから owner と repo を抽出する

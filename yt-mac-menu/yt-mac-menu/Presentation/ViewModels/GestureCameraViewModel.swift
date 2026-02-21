@@ -15,8 +15,6 @@ class GestureCameraViewModel: ObservableObject {
         cameraUseCase.session
     }
     
-    private let sendCommitDataUseCase: SendCommitDataUseCase
-    
     private let gestureUseCase: GestureDetectionUseCase
     private var cancellables = Set<AnyCancellable>()
     
@@ -26,6 +24,7 @@ class GestureCameraViewModel: ObservableObject {
         case success
         case unauthorized
         case shortcutSuccess
+        case commandResult(ShellResult)
         case error(Error)
         
         static func == (lhs: AppStatus, rhs: AppStatus) -> Bool {
@@ -33,7 +32,9 @@ class GestureCameraViewModel: ObservableObject {
             case (.waiting, .waiting),
                  (.detecting, .detecting),
                  (.success, .success),
-                 (.unauthorized, .unauthorized):
+                 (.unauthorized, .unauthorized),
+                 (.shortcutSuccess, .shortcutSuccess),
+                 (.commandResult, .commandResult):
                 return true
             case (.error(let lhsError), .error(let rhsError)):
                 return lhsError.localizedDescription == rhsError.localizedDescription
@@ -45,12 +46,10 @@ class GestureCameraViewModel: ObservableObject {
     
     init(
         cameraUseCase: CameraManagementUseCase,
-        gestureUseCase: GestureDetectionUseCase,
-        sendCommitDataUseCase: SendCommitDataUseCase
+        gestureUseCase: GestureDetectionUseCase
     ) {
         self.cameraUseCase = cameraUseCase
         self.gestureUseCase = gestureUseCase
-        self.sendCommitDataUseCase = sendCommitDataUseCase
         print("GestureCameraViewModel initialized")
         checkPermission()
         setupBindings()
@@ -58,16 +57,30 @@ class GestureCameraViewModel: ObservableObject {
     }
     
     private func setupCoordinatorBinding() {
+        let coordinator = DependencyContainer.shared.appCoordinator
+
         // AppCoordinatorの状態を監視してappStateを更新
-        DependencyContainer.shared.appCoordinator.$currentState
+        coordinator.$currentState
             .receive(on: DispatchQueue.main)
             .sink { [weak self] coordinatorState in
                 self?.updateAppStatus(from: coordinatorState)
             }
             .store(in: &cancellables)
+
+        // コマンド結果を監視して結果表示状態に遷移
+        coordinator.$commandResult
+            .receive(on: DispatchQueue.main)
+            .compactMap { $0 }
+            .sink { [weak self] result in
+                self?.appState = .commandResult(result)
+            }
+            .store(in: &cancellables)
     }
     
     private func updateAppStatus(from coordinatorState: AppState) {
+        // コマンド結果表示中は coordinatorState による上書きをしない
+        if case .commandResult = appState { return }
+
         switch coordinatorState {
         case .detectingHeart:
             appState = .detecting
@@ -102,7 +115,7 @@ class GestureCameraViewModel: ObservableObject {
         switch state {
         case .detecting:
             cameraUseCase.startCamera()
-            case .success, .shortcutSuccess, .error:
+        case .success, .shortcutSuccess, .error, .commandResult:
             cameraUseCase.stopCamera()
         case .waiting, .unauthorized:
             break

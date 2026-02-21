@@ -8,12 +8,9 @@ struct GestureCameraView: View {
         let container = DependencyContainer.shared
         let cameraUseCase = container.makeCameraManagementUseCase()
         let gestureUseCase = container.makeGestureDetectionUseCase()
-        let sendCommitDataUseCase = container.makeSendCommitDataUseCase()
         _gestureCameraViewModel = StateObject(wrappedValue: GestureCameraViewModel(
             cameraUseCase: cameraUseCase,
-            gestureUseCase: gestureUseCase,
-            sendCommitDataUseCase: sendCommitDataUseCase
-            
+            gestureUseCase: gestureUseCase
         ))
     }
     
@@ -29,6 +26,10 @@ struct GestureCameraView: View {
                     iconName: "checkmark.circle.fill",
                     color: .green
                 )
+            case .commandResult(let result):
+                CommandResultView(result: result) {
+                    FloatingWindowController.shared.close()
+                }
             case .waiting:
                 StatusFeedbackSectionView(
                     title: "読み込み中です",
