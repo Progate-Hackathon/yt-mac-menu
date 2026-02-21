@@ -250,18 +250,59 @@ class AppCoordinator: ObservableObject {
         
         print("AppCoordinator: サムズアップ検出")
         
-        // TODO: Implement thumbs up action here
-        // For now, just close the window and return to idle
+        // Read action type from UserDefaults
+        let actionType = UserDefaultsManager.shared.get(key: .thumbsUpActionType, type: ActionType.self) ?? .command
         
         gestureRepository.sendCommand(.disableGesture)
+        transition(to: .thumbsUpDetected)
         
-        // Proper state transition before closing window
-        transition(to: .resetting)
-        isCameraVisible = false
-        
-        // Reset to idle state
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.transition(to: .idle)
+        // Execute appropriate action based on saved type
+        switch actionType {
+        case .commit:
+            // TODO: Implement commit action for thumbs up
+            print("AppCoordinator: サムズアップでコミット実行（未実装）")
+            transition(to: .resetting)
+            isCameraVisible = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.transition(to: .idle)
+            }
+            
+        case .shortcut:
+            if let hotkey = UserDefaultsManager.shared.get(key: .thumbsUpHotkeyConfig, type: Hotkey.self) {
+                print("AppCoordinator: サムズアップでショートカット実行 - \(hotkey.displayString)")
+                KeySender.activatePreviousAppAndSimulateShortcut(
+                    keyCode: hotkey.keyCode,
+                    modifiers: hotkey.modifiers
+                )
+                transition(to: .shortcutSuccess)
+            }
+            
+            isCameraVisible = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+                self?.transition(to: .resetting)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                    self?.transition(to: .idle)
+                }
+            }
+            
+        case .command:
+            if let command = UserDefaultsManager.shared.get(key: .thumbsUpCommandString, type: String.self), !command.isEmpty {
+                print("AppCoordinator: サムズアップでコマンド実行 - \(command)")
+                Task {
+                    let result = await ShellExecutor.execute(command: command)
+                    await MainActor.run {
+                        self.commandResult = result
+                    }
+                }
+            }
+            
+            isCameraVisible = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+                self?.transition(to: .resetting)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                    self?.transition(to: .idle)
+                }
+            }
         }
     }
     
@@ -273,17 +314,59 @@ class AppCoordinator: ObservableObject {
         
         print("AppCoordinator: ピース検出")
         
-        // TODO: Implement peace gesture action here
-        // Action will be configurable via settings UI (to be implemented)
-        // For now, just close the window
+        // Read action type from UserDefaults
+        let actionType = UserDefaultsManager.shared.get(key: .peaceActionType, type: ActionType.self) ?? .shortcut
         
         gestureRepository.sendCommand(.disableGesture)
+        transition(to: .peaceDetected)
         
-        transition(to: .resetting)
-        isCameraVisible = false
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.transition(to: .idle)
+        // Execute appropriate action based on saved type
+        switch actionType {
+        case .commit:
+            // TODO: Implement commit action for peace
+            print("AppCoordinator: ピースでコミット実行（未実装）")
+            transition(to: .resetting)
+            isCameraVisible = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.transition(to: .idle)
+            }
+            
+        case .shortcut:
+            if let hotkey = UserDefaultsManager.shared.get(key: .peaceHotkeyConfig, type: Hotkey.self) {
+                print("AppCoordinator: ピースでショートカット実行 - \(hotkey.displayString)")
+                KeySender.activatePreviousAppAndSimulateShortcut(
+                    keyCode: hotkey.keyCode,
+                    modifiers: hotkey.modifiers
+                )
+                transition(to: .shortcutSuccess)
+            }
+            
+            isCameraVisible = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+                self?.transition(to: .resetting)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                    self?.transition(to: .idle)
+                }
+            }
+            
+        case .command:
+            if let command = UserDefaultsManager.shared.get(key: .peaceCommandString, type: String.self), !command.isEmpty {
+                print("AppCoordinator: ピースでコマンド実行 - \(command)")
+                Task {
+                    let result = await ShellExecutor.execute(command: command)
+                    await MainActor.run {
+                        self.commandResult = result
+                    }
+                }
+            }
+            
+            isCameraVisible = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+                self?.transition(to: .resetting)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                    self?.transition(to: .idle)
+                }
+            }
         }
     }
     

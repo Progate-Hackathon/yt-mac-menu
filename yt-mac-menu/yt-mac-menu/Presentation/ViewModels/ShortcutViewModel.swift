@@ -13,6 +13,16 @@ final class ShortcutViewModel: ObservableObject {
     @Published var tempModifiers: NSEvent.ModifierFlags = []
     @Published var tempKeyDisplay: String = ""
 
+    // Peace gesture settings
+    @Published var peaceActionType: ActionType
+    @Published var peaceHotkey: Hotkey
+    @Published var peaceCommandString: String = ""
+    
+    // Thumbs up gesture settings
+    @Published var thumbsUpActionType: ActionType
+    @Published var thumbsUpHotkey: Hotkey
+    @Published var thumbsUpCommandString: String = ""
+
     // snap検知トリガー用
     @Published var snapTriggerHotkey: Hotkey?
     @Published var snapTriggerPreviewHotkey: Hotkey
@@ -37,6 +47,19 @@ final class ShortcutViewModel: ObservableObject {
         self.currentHotkey = UserDefaultsManager.shared.get(key: .hotkeyConfig, type: Hotkey.self)
             ?? Hotkey(modifiers: .option, keyCode: 49, keyDisplay: "Space")
         self.actionType = UserDefaultsManager.shared.get(key: .actionType, type: ActionType.self) ?? .commit
+        
+        // Peace gesture defaults
+        self.peaceActionType = UserDefaultsManager.shared.get(key: .peaceActionType, type: ActionType.self) ?? .shortcut
+        self.peaceHotkey = UserDefaultsManager.shared.get(key: .peaceHotkeyConfig, type: Hotkey.self)
+            ?? Hotkey(modifiers: .command, keyCode: 8, keyDisplay: "C")
+        self.peaceCommandString = UserDefaultsManager.shared.get(key: .peaceCommandString, type: String.self) ?? ""
+        
+        // Thumbs up gesture defaults
+        self.thumbsUpActionType = UserDefaultsManager.shared.get(key: .thumbsUpActionType, type: ActionType.self) ?? .command
+        self.thumbsUpHotkey = UserDefaultsManager.shared.get(key: .thumbsUpHotkeyConfig, type: Hotkey.self)
+            ?? Hotkey(modifiers: .command, keyCode: 9, keyDisplay: "V")
+        self.thumbsUpCommandString = UserDefaultsManager.shared.get(key: .thumbsUpCommandString, type: String.self) ?? ""
+        
         let savedSnapTrigger = UserDefaultsManager.shared.get(key: .snapTriggerHotkey, type: Hotkey.self)
         self.snapTriggerHotkey = savedSnapTrigger
         self.snapTriggerPreviewHotkey = savedSnapTrigger
@@ -194,6 +217,40 @@ final class ShortcutViewModel: ObservableObject {
     func saveCommand() {
         UserDefaultsManager.shared.save(key: .commandString, value: commandString)
         print("ShortcutViewModel: コマンド保存 - \(commandString)")
+    }
+    
+    // MARK: - Peace Gesture Actions
+    
+    func savePeaceActionType(_ type: ActionType) {
+        UserDefaultsManager.shared.save(key: .peaceActionType, value: type)
+        peaceActionType = type
+    }
+    
+    func savePeaceHotkey(_ hotkey: Hotkey) {
+        UserDefaultsManager.shared.save(key: .peaceHotkeyConfig, value: hotkey)
+        peaceHotkey = hotkey
+    }
+    
+    func savePeaceCommand() {
+        UserDefaultsManager.shared.save(key: .peaceCommandString, value: peaceCommandString)
+        print("ShortcutViewModel: ピースコマンド保存 - \(peaceCommandString)")
+    }
+    
+    // MARK: - Thumbs Up Gesture Actions
+    
+    func saveThumbsUpActionType(_ type: ActionType) {
+        UserDefaultsManager.shared.save(key: .thumbsUpActionType, value: type)
+        thumbsUpActionType = type
+    }
+    
+    func saveThumbsUpHotkey(_ hotkey: Hotkey) {
+        UserDefaultsManager.shared.save(key: .thumbsUpHotkeyConfig, value: hotkey)
+        thumbsUpHotkey = hotkey
+    }
+    
+    func saveThumbsUpCommand() {
+        UserDefaultsManager.shared.save(key: .thumbsUpCommandString, value: thumbsUpCommandString)
+        print("ShortcutViewModel: サムズアップコマンド保存 - \(thumbsUpCommandString)")
     }
 
     func runTestShortcut() {

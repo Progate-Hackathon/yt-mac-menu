@@ -16,6 +16,16 @@ enum UserDefaultKeys: String {
     case shouldCreatePR
     case snapTriggerHotkey
     case commandString
+    
+    // Peace gesture settings
+    case peaceActionType
+    case peaceHotkeyConfig
+    case peaceCommandString
+    
+    // Thumbs up gesture settings
+    case thumbsUpActionType
+    case thumbsUpHotkeyConfig
+    case thumbsUpCommandString
 }
 
 final class UserDefaultsManager {
