@@ -9,9 +9,11 @@ final class ShortcutViewModel: ObservableObject {
     @Published var currentHotkey: Hotkey
     @Published var actionType: ActionType
     @Published var isRecording: Bool = false
-    @Published var isSuccessState: Bool = false
+    @Published var showSuccess: Bool = false
     @Published var tempModifiers: NSEvent.ModifierFlags = []
     @Published var tempKeyDisplay: String = ""
+    
+    var onRecordingComplete: (() -> Void)?
 
     private let inputMonitor = InputMonitorService()
 
@@ -26,8 +28,12 @@ final class ShortcutViewModel: ObservableObject {
     }
 
     deinit {
-        Task { @MainActor in
-            inputMonitor.stopMonitoring()
+        print("ShortcutViewModel: deinit呼び出し - クリーンアップ開始")
+        // MainActorコンテキストで同期的にクリーンアップ
+        // deinitはnonisolatedなので、DispatchQueueを使う
+        let monitor = inputMonitor
+        DispatchQueue.main.async {
+            monitor.cleanup()
         }
     }
 
@@ -47,15 +53,18 @@ final class ShortcutViewModel: ObservableObject {
     // MARK: - Recorder
 
     func startRecording() {
+        print("ShortcutViewModel: startRecording呼び出し")
         isRecording = true
-        isSuccessState = false
+        showSuccess = false
         tempModifiers = []
         tempKeyDisplay = ""
+        
         inputMonitor.startMonitoring()
     }
 
     func stopRecording() {
-        inputMonitor.stopMonitoring()
+        print("ShortcutViewModel: stopRecording呼び出し")
+        inputMonitor.stopMonitorOnly()  // コールバックは保持したまま停止
         isRecording = false
     }
 
@@ -66,14 +75,15 @@ final class ShortcutViewModel: ObservableObject {
         saveHotkey(newHotkey)
         currentHotkey = newHotkey
         print("ShortcutViewModel: 保存後のホットキー: \(currentHotkey.displayString)")
-        isSuccessState = true
+        showSuccess = true
 
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 1_000_000_000)
             stopRecording()
-            isSuccessState = false
+            showSuccess = false
             tempKeyDisplay = ""
             tempModifiers = []
+            onRecordingComplete?()  // ポップオーバーを閉じる通知
         }
     }
 

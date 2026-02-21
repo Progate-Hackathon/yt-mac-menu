@@ -38,6 +38,9 @@ struct ShortcutView: View {
                             
                             Button(action: {
                                 showRecorderPopover = true
+                                viewModel.onRecordingComplete = {
+                                    showRecorderPopover = false
+                                }
                                 viewModel.startRecording()
                             }) {
                                 Text(viewModel.currentHotkey.displayString)
@@ -53,12 +56,10 @@ struct ShortcutView: View {
                             .buttonStyle(.plain)
                             .popover(isPresented: $showRecorderPopover, arrowEdge: .top) {
                                 RecorderOverlaySectionView(
-                                    isRecording: $viewModel.isRecording,
-                                    isSuccessState: $viewModel.isSuccessState,
+                                    showSuccess: $viewModel.showSuccess,
                                     tempModifiers: $viewModel.tempModifiers,
                                     tempKeyDisplay: $viewModel.tempKeyDisplay,
                                     currentHotkey: $viewModel.currentHotkey,
-                                    isPresented: $showRecorderPopover,
                                     stopRecording: viewModel.stopRecording
                                 )
                             }

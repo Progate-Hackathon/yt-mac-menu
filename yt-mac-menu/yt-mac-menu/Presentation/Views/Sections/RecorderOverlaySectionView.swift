@@ -1,12 +1,10 @@
 import SwiftUI
 
 struct RecorderOverlaySectionView: View {
-    @Binding var isRecording: Bool
-    @Binding var isSuccessState: Bool
+    @Binding var showSuccess: Bool
     @Binding var tempModifiers: NSEvent.ModifierFlags
     @Binding var tempKeyDisplay: String
     @Binding var currentHotkey: Hotkey
-    @Binding var isPresented: Bool
     let stopRecording: () -> Void
     
     var body: some View {
@@ -16,20 +14,15 @@ struct RecorderOverlaySectionView: View {
                 .frame(width: 260, height: 80)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
-                        .stroke(isSuccessState ? Color.green : Color.clear, lineWidth: 2)
+                        .stroke(showSuccess ? Color.green : Color.clear, lineWidth: 2)
                 )
             
             VStack(spacing: 8) {
-                if isSuccessState {
+                if showSuccess {
                     successView
                 } else {
                     recordingView
                 }
-            }
-        }
-        .onChange(of: isRecording) { _, isRecording in
-            if !isRecording {
-                isPresented = false
             }
         }
         .onDisappear {
