@@ -68,6 +68,22 @@ class GitRepository: GitRepositoryProtocol {
         return output.split(separator: "\n").map(String.init)
     }
     
+    
+    func getBranches(projectPath: String) throws -> [String] {
+        guard let output = executeGitCommand(
+            arguments: ["branch", "--format=%(refname:short)"],
+            at: projectPath
+        ) else {
+            throw GitError.commandFailed("結果の取得に失敗")
+        }
+
+        let branches = output
+            .split(separator: "\n")
+            .map { String($0).trimmingCharacters(in: .whitespaces) }
+
+        return branches
+    }
+
     // MARK: - Private Method
     
     private func executeGitCommand(arguments: [String], at path: String) -> String? {
