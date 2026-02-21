@@ -16,12 +16,13 @@ enum UserDefaultKeys: String {
     case shouldCreatePR
     case snapTriggerHotkey
     case commandString
-    
+    case onboardingCompleted
+
     // Peace gesture settings
     case peaceActionType
     case peaceHotkeyConfig
     case peaceCommandString
-    
+
     // Thumbs up gesture settings
     case thumbsUpActionType
     case thumbsUpHotkeyConfig
