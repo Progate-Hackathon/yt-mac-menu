@@ -18,15 +18,20 @@ enum UserDefaultKeys: String {
     case commandString
     case onboardingCompleted
 
-    // Peace gesture settings
+    // Peace gesture settings (legacy - deprecated)
     case peaceActionType
     case peaceHotkeyConfig
     case peaceCommandString
 
-    // Thumbs up gesture settings
+    // Thumbs up gesture settings (legacy - deprecated)
     case thumbsUpActionType
     case thumbsUpHotkeyConfig
     case thumbsUpCommandString
+    
+    // Multi-action per gesture (new)
+    case heartActions      // [GestureAction]
+    case peaceActions      // [GestureAction]
+    case thumbsUpActions   // [GestureAction]
 }
 
 final class UserDefaultsManager {

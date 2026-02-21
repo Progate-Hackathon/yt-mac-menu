@@ -3,19 +3,41 @@ import Foundation
 @MainActor
 final class ExecuteGestureActionUseCase {
     
-    // MARK: - Configuration
-    
-    struct ActionConfig {
-        let hotkeyKey: UserDefaultKeys
-        let commandKey: UserDefaultKeys
-        let actionTypeKey: UserDefaultKeys
-    }
+    // MARK: - Result Types
     
     enum ActionResult {
         case commitSuccess
         case shortcutSuccess
         case commandSuccess(ShellResult)
         case error(Error)
+        
+        var isSuccess: Bool {
+            switch self {
+            case .commitSuccess, .shortcutSuccess, .commandSuccess:
+                return true
+            case .error:
+                return false
+            }
+        }
+    }
+    
+    struct ExecutionSummary {
+        let results: [ActionResult]
+        
+        var totalCount: Int { results.count }
+        var successCount: Int { results.filter(\.isSuccess).count }
+        var failureCount: Int { results.filter { !$0.isSuccess }.count }
+        var allSucceeded: Bool { failureCount == 0 }
+        
+        var summaryMessage: String {
+            if results.isEmpty {
+                return "アクションが設定されていません"
+            }
+            if allSucceeded {
+                return "\(totalCount)個のアクションが完了しました"
+            }
+            return "\(totalCount)個中\(successCount)個成功（\(failureCount)個失敗）"
+        }
     }
     
     // MARK: - Dependencies
@@ -33,26 +55,54 @@ final class ExecuteGestureActionUseCase {
     
     // MARK: - Public API
     
-    /// Execute action based on config (reads action type from UserDefaults)
-    func executeAction(config: ActionConfig) async -> ActionResult {
-        let actionType = UserDefaultsManager.shared.get(
-            key: config.actionTypeKey,
-            type: ActionType.self
-        ) ?? .shortcut
+    /// Execute all actions for a gesture type sequentially (continue on failure)
+    func executeActions(for gestureType: GestureType) async -> ExecutionSummary {
+        let actions = loadActions(for: gestureType)
         
-        print("ExecuteGestureActionUseCase: アクション実行開始 - \(actionType.displayName)")
-        
-        switch actionType {
-        case .commit:
-            return await executeCommit()
-        case .shortcut:
-            return await executeShortcut(hotkeyKey: config.hotkeyKey)
-        case .command:
-            return await executeCommand(commandKey: config.commandKey)
+        if actions.isEmpty {
+            print("ExecuteGestureActionUseCase: \(gestureType.displayName)のアクションが設定されていません")
+            return ExecutionSummary(results: [])
         }
+        
+        print("ExecuteGestureActionUseCase: \(gestureType.displayName) - \(actions.count)個のアクションを実行開始")
+        
+        var results: [ActionResult] = []
+        
+        for (index, action) in actions.enumerated() {
+            print("ExecuteGestureActionUseCase: アクション\(index + 1)/\(actions.count) - \(action.actionType.displayName)")
+            let result = await executeSingleAction(action)
+            results.append(result)
+            // Continue even on failure
+        }
+        
+        let summary = ExecutionSummary(results: results)
+        print("ExecuteGestureActionUseCase: 実行完了 - \(summary.summaryMessage)")
+        
+        return summary
     }
     
     // MARK: - Private Methods
+    
+    private func loadActions(for gestureType: GestureType) -> [GestureAction] {
+        let key: UserDefaultKeys
+        switch gestureType {
+        case .heart: key = .heartActions
+        case .peace: key = .peaceActions
+        case .thumbsUp: key = .thumbsUpActions
+        }
+        return UserDefaultsManager.shared.get(key: key, type: [GestureAction].self) ?? []
+    }
+    
+    private func executeSingleAction(_ action: GestureAction) async -> ActionResult {
+        switch action.actionType {
+        case .commit:
+            return await executeCommit()
+        case .shortcut:
+            return await executeShortcut(hotkey: action.hotkey)
+        case .command:
+            return await executeCommand(command: action.commandString)
+        }
+    }
     
     private func executeCommit() async -> ActionResult {
         print("ExecuteGestureActionUseCase: コミット実行")
@@ -69,11 +119,8 @@ final class ExecuteGestureActionUseCase {
         }
     }
     
-    private func executeShortcut(hotkeyKey: UserDefaultKeys) async -> ActionResult {
-        guard let hotkey = UserDefaultsManager.shared.get(
-            key: hotkeyKey,
-            type: Hotkey.self
-        ) else {
+    private func executeShortcut(hotkey: Hotkey?) async -> ActionResult {
+        guard let hotkey = hotkey else {
             print("ExecuteGestureActionUseCase: ホットキーが設定されていません")
             return .error(NSError(
                 domain: "ExecuteGestureAction",
@@ -91,11 +138,8 @@ final class ExecuteGestureActionUseCase {
         return .shortcutSuccess
     }
     
-    private func executeCommand(commandKey: UserDefaultKeys) async -> ActionResult {
-        guard let command = UserDefaultsManager.shared.get(
-            key: commandKey,
-            type: String.self
-        ), !command.isEmpty else {
+    private func executeCommand(command: String?) async -> ActionResult {
+        guard let command = command, !command.isEmpty else {
             print("ExecuteGestureActionUseCase: コマンドが設定されていません")
             return .error(NSError(
                 domain: "ExecuteGestureAction",

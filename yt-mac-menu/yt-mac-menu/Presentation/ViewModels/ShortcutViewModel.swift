@@ -6,32 +6,25 @@ final class ShortcutViewModel: ObservableObject {
     
     // MARK: - Recording Context
     
-    enum RecordingContext {
-        case heart
-        case peace
-        case thumbsUp
+    struct RecordingContext: Equatable {
+        let gestureType: GestureType
+        let actionIndex: Int
     }
 
     // MARK: - Properties
-
-    @Published var currentHotkey: Hotkey
-    @Published var actionType: ActionType
+    
+    // Multi-action arrays (new)
+    @Published var heartActions: [GestureAction] = []
+    @Published var peaceActions: [GestureAction] = []
+    @Published var thumbsUpActions: [GestureAction] = []
+    
+    // Recording state
     @Published var isRecording: Bool = false
     @Published var showSuccess: Bool = false
     @Published var tempModifiers: NSEvent.ModifierFlags = []
     @Published var tempKeyDisplay: String = ""
     
-    private var currentRecordingContext: RecordingContext = .heart
-
-    // Peace gesture settings
-    @Published var peaceActionType: ActionType
-    @Published var peaceHotkey: Hotkey
-    @Published var peaceCommandString: String = ""
-    
-    // Thumbs up gesture settings
-    @Published var thumbsUpActionType: ActionType
-    @Published var thumbsUpHotkey: Hotkey
-    @Published var thumbsUpCommandString: String = ""
+    private var currentRecordingContext: RecordingContext?
 
     // snap検知トリガー用
     @Published var snapTriggerHotkey: Hotkey?
@@ -42,9 +35,6 @@ final class ShortcutViewModel: ObservableObject {
     @Published var tempSnapModifiers: NSEvent.ModifierFlags = []
     @Published var tempSnapKeyDisplay: String = ""
 
-    // コマンド実行用
-    @Published var commandString: String = ""
-
     var onRecordingComplete: (() -> Void)?
     var onSnapRecordingComplete: (() -> Void)?
 
@@ -54,27 +44,15 @@ final class ShortcutViewModel: ObservableObject {
     // MARK: - Lifecycle
 
     init() {
-        self.currentHotkey = UserDefaultsManager.shared.get(key: .hotkeyConfig, type: Hotkey.self)
-            ?? Hotkey(modifiers: .option, keyCode: 49, keyDisplay: "Space")
-        self.actionType = UserDefaultsManager.shared.get(key: .actionType, type: ActionType.self) ?? .commit
-        
-        // Peace gesture defaults
-        self.peaceActionType = UserDefaultsManager.shared.get(key: .peaceActionType, type: ActionType.self) ?? .shortcut
-        self.peaceHotkey = UserDefaultsManager.shared.get(key: .peaceHotkeyConfig, type: Hotkey.self)
-            ?? Hotkey(modifiers: .command, keyCode: 8, keyDisplay: "C")
-        self.peaceCommandString = UserDefaultsManager.shared.get(key: .peaceCommandString, type: String.self) ?? ""
-        
-        // Thumbs up gesture defaults
-        self.thumbsUpActionType = UserDefaultsManager.shared.get(key: .thumbsUpActionType, type: ActionType.self) ?? .command
-        self.thumbsUpHotkey = UserDefaultsManager.shared.get(key: .thumbsUpHotkeyConfig, type: Hotkey.self)
-            ?? Hotkey(modifiers: .command, keyCode: 9, keyDisplay: "V")
-        self.thumbsUpCommandString = UserDefaultsManager.shared.get(key: .thumbsUpCommandString, type: String.self) ?? ""
+        // Load multi-action arrays
+        self.heartActions = UserDefaultsManager.shared.get(key: .heartActions, type: [GestureAction].self) ?? []
+        self.peaceActions = UserDefaultsManager.shared.get(key: .peaceActions, type: [GestureAction].self) ?? []
+        self.thumbsUpActions = UserDefaultsManager.shared.get(key: .thumbsUpActions, type: [GestureAction].self) ?? []
         
         let savedSnapTrigger = UserDefaultsManager.shared.get(key: .snapTriggerHotkey, type: Hotkey.self)
         self.snapTriggerHotkey = savedSnapTrigger
         self.snapTriggerPreviewHotkey = savedSnapTrigger
             ?? Hotkey(modifiers: [], keyCode: 0, keyDisplay: "")
-        self.commandString = UserDefaultsManager.shared.get(key: .commandString, type: String.self) ?? ""
 
         setupRecorderCallbacks()
         setupSnapTriggerCallbacks()
@@ -112,12 +90,103 @@ final class ShortcutViewModel: ObservableObject {
             self?.completeSnapTriggerRecording(modifiers: modifiers, keyCode: keyCode, display: display)
         }
     }
+    
+    // MARK: - Multi-Action Management
+    
+    func actions(for gestureType: GestureType) -> [GestureAction] {
+        switch gestureType {
+        case .heart: return heartActions
+        case .peace: return peaceActions
+        case .thumbsUp: return thumbsUpActions
+        }
+    }
+    
+    func addAction(for gestureType: GestureType) {
+        let actions = self.actions(for: gestureType)
+        guard actions.count < GestureAction.maxActionsPerGesture else { return }
+        
+        let newAction = GestureAction()
+        switch gestureType {
+        case .heart:
+            heartActions.append(newAction)
+            saveActions(for: .heart)
+        case .peace:
+            peaceActions.append(newAction)
+            saveActions(for: .peace)
+        case .thumbsUp:
+            thumbsUpActions.append(newAction)
+            saveActions(for: .thumbsUp)
+        }
+    }
+    
+    func removeAction(at index: Int, for gestureType: GestureType) {
+        switch gestureType {
+        case .heart:
+            guard heartActions.indices.contains(index) else { return }
+            heartActions.remove(at: index)
+            saveActions(for: .heart)
+        case .peace:
+            guard peaceActions.indices.contains(index) else { return }
+            peaceActions.remove(at: index)
+            saveActions(for: .peace)
+        case .thumbsUp:
+            guard thumbsUpActions.indices.contains(index) else { return }
+            thumbsUpActions.remove(at: index)
+            saveActions(for: .thumbsUp)
+        }
+    }
+    
+    func updateActionType(_ actionType: ActionType, at index: Int, for gestureType: GestureType) {
+        switch gestureType {
+        case .heart:
+            guard heartActions.indices.contains(index) else { return }
+            heartActions[index].actionType = actionType
+            saveActions(for: .heart)
+        case .peace:
+            guard peaceActions.indices.contains(index) else { return }
+            peaceActions[index].actionType = actionType
+            saveActions(for: .peace)
+        case .thumbsUp:
+            guard thumbsUpActions.indices.contains(index) else { return }
+            thumbsUpActions[index].actionType = actionType
+            saveActions(for: .thumbsUp)
+        }
+    }
+    
+    func updateCommand(_ command: String, at index: Int, for gestureType: GestureType) {
+        switch gestureType {
+        case .heart:
+            guard heartActions.indices.contains(index) else { return }
+            heartActions[index].commandString = command
+            saveActions(for: .heart)
+        case .peace:
+            guard peaceActions.indices.contains(index) else { return }
+            peaceActions[index].commandString = command
+            saveActions(for: .peace)
+        case .thumbsUp:
+            guard thumbsUpActions.indices.contains(index) else { return }
+            thumbsUpActions[index].commandString = command
+            saveActions(for: .thumbsUp)
+        }
+    }
+    
+    private func saveActions(for gestureType: GestureType) {
+        switch gestureType {
+        case .heart:
+            UserDefaultsManager.shared.save(key: .heartActions, value: heartActions)
+        case .peace:
+            UserDefaultsManager.shared.save(key: .peaceActions, value: peaceActions)
+        case .thumbsUp:
+            UserDefaultsManager.shared.save(key: .thumbsUpActions, value: thumbsUpActions)
+        }
+        print("ShortcutViewModel: \(gestureType.displayName)アクション保存完了")
+    }
 
     // MARK: - Recorder
 
-    func startRecording(for context: RecordingContext = .heart) {
-        print("ShortcutViewModel: startRecording呼び出し - context: \(context)")
-        currentRecordingContext = context
+    func startRecording(for gestureType: GestureType, actionIndex: Int) {
+        print("ShortcutViewModel: startRecording呼び出し - gesture: \(gestureType), index: \(actionIndex)")
+        currentRecordingContext = RecordingContext(gestureType: gestureType, actionIndex: actionIndex)
         // 排他制御：snap記録中なら止める
         if isRecordingSnapTrigger { stopRecordingSnapTrigger() }
         isRecording = true
@@ -132,26 +201,29 @@ final class ShortcutViewModel: ObservableObject {
         print("ShortcutViewModel: stopRecording呼び出し")
         inputMonitor.stopMonitorOnly()  // コールバックは保持したまま停止
         isRecording = false
+        currentRecordingContext = nil
     }
 
     private func completeRecording(modifiers: NSEvent.ModifierFlags, keyCode: UInt16, display: String) {
-        print("ShortcutViewModel: ショートカット記録完了 - \(display), keyCode: \(keyCode), modifiers: \(modifiers), context: \(currentRecordingContext)")
+        guard let context = currentRecordingContext else { return }
+        
+        print("ShortcutViewModel: ショートカット記録完了 - \(display), keyCode: \(keyCode), gesture: \(context.gestureType), index: \(context.actionIndex)")
         let newHotkey = Hotkey(modifiers: modifiers, keyCode: keyCode, keyDisplay: display)
         
-        // Save to appropriate storage based on recording context
-        switch currentRecordingContext {
+        // Update the action's hotkey
+        switch context.gestureType {
         case .heart:
-            print("ShortcutViewModel: ハートジェスチャーに保存")
-            saveHotkey(newHotkey)
-            currentHotkey = newHotkey
+            guard heartActions.indices.contains(context.actionIndex) else { return }
+            heartActions[context.actionIndex].hotkey = newHotkey
+            saveActions(for: .heart)
         case .peace:
-            print("ShortcutViewModel: ピースジェスチャーに保存")
-            savePeaceHotkey(newHotkey)
-            peaceHotkey = newHotkey
+            guard peaceActions.indices.contains(context.actionIndex) else { return }
+            peaceActions[context.actionIndex].hotkey = newHotkey
+            saveActions(for: .peace)
         case .thumbsUp:
-            print("ShortcutViewModel: サムズアップジェスチャーに保存")
-            saveThumbsUpHotkey(newHotkey)
-            thumbsUpHotkey = newHotkey
+            guard thumbsUpActions.indices.contains(context.actionIndex) else { return }
+            thumbsUpActions[context.actionIndex].hotkey = newHotkey
+            saveActions(for: .thumbsUp)
         }
         
         showSuccess = true
@@ -170,7 +242,7 @@ final class ShortcutViewModel: ObservableObject {
 
     func startRecordingSnapTrigger() {
         print("ShortcutViewModel: startRecordingSnapTrigger呼び出し")
-        // 排他制御：ハートショートカット記録中なら止める
+        // 排他制御：ショートカット記録中なら止める
         if isRecording { stopRecording() }
         isRecordingSnapTrigger = true
         showSnapTriggerSuccess = false
@@ -189,21 +261,6 @@ final class ShortcutViewModel: ObservableObject {
         print("ShortcutViewModel: snap検知トリガー記録完了 - \(display), keyCode: \(keyCode)")
         let newHotkey = Hotkey(modifiers: modifiers, keyCode: keyCode, keyDisplay: display)
 
-        // 同一キーバリデーション：ハートショートカットと被っていないかチェック
-        if actionType == .shortcut,
-           newHotkey.keyCode == currentHotkey.keyCode,
-           newHotkey.modifiers == currentHotkey.modifiers {
-            print("ShortcutViewModel: ⚠️ ハートショートカットと同じキーのため保存をスキップ")
-            snapTriggerMonitor.stopMonitorOnly()
-            isRecordingSnapTrigger = false
-            showSnapTriggerError = "ハート検出ショートカットと同じキーは使えません"
-            Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
-                showSnapTriggerError = nil
-            }
-            return
-        }
-
         UserDefaultsManager.shared.save(key: .snapTriggerHotkey, value: newHotkey)
         snapTriggerHotkey = newHotkey
         snapTriggerPreviewHotkey = newHotkey
@@ -217,70 +274,5 @@ final class ShortcutViewModel: ObservableObject {
             tempSnapModifiers = []
             onSnapRecordingComplete?()
         }
-    }
-
-    // MARK: - Actions
-
-    func saveHotkey(_ hotkey: Hotkey) {
-        print("ShortcutViewModel: UserDefaultsに保存中 - \(hotkey.displayString)")
-        UserDefaultsManager.shared.save(key: .hotkeyConfig, value: hotkey)
-        
-        // 保存確認
-        if let saved = UserDefaultsManager.shared.get(key: .hotkeyConfig, type: Hotkey.self) {
-            print("ShortcutViewModel: 保存確認OK - \(saved.displayString)")
-        } else {
-            print("ShortcutViewModel: ⚠️ 保存確認NG - UserDefaultsから読み取れません")
-        }
-    }
-
-    func saveActionType(_ type: ActionType) {
-        UserDefaultsManager.shared.save(key: .actionType, value: type)
-        actionType = type
-    }
-
-    func saveCommand() {
-        UserDefaultsManager.shared.save(key: .commandString, value: commandString)
-        print("ShortcutViewModel: コマンド保存 - \(commandString)")
-    }
-    
-    // MARK: - Peace Gesture Actions
-    
-    func savePeaceActionType(_ type: ActionType) {
-        UserDefaultsManager.shared.save(key: .peaceActionType, value: type)
-        peaceActionType = type
-    }
-    
-    func savePeaceHotkey(_ hotkey: Hotkey) {
-        UserDefaultsManager.shared.save(key: .peaceHotkeyConfig, value: hotkey)
-        peaceHotkey = hotkey
-    }
-    
-    func savePeaceCommand() {
-        UserDefaultsManager.shared.save(key: .peaceCommandString, value: peaceCommandString)
-        print("ShortcutViewModel: ピースコマンド保存 - \(peaceCommandString)")
-    }
-    
-    // MARK: - Thumbs Up Gesture Actions
-    
-    func saveThumbsUpActionType(_ type: ActionType) {
-        UserDefaultsManager.shared.save(key: .thumbsUpActionType, value: type)
-        thumbsUpActionType = type
-    }
-    
-    func saveThumbsUpHotkey(_ hotkey: Hotkey) {
-        UserDefaultsManager.shared.save(key: .thumbsUpHotkeyConfig, value: hotkey)
-        thumbsUpHotkey = hotkey
-    }
-    
-    func saveThumbsUpCommand() {
-        UserDefaultsManager.shared.save(key: .thumbsUpCommandString, value: thumbsUpCommandString)
-        print("ShortcutViewModel: サムズアップコマンド保存 - \(thumbsUpCommandString)")
-    }
-
-    func runTestShortcut() {
-        KeySender.activatePreviousAppAndSimulateShortcut(
-            keyCode: currentHotkey.keyCode,
-            modifiers: currentHotkey.modifiers
-        )
     }
 }

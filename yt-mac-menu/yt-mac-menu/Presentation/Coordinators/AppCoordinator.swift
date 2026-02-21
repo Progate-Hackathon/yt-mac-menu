@@ -297,58 +297,43 @@ class AppCoordinator: ObservableObject {
         transition(to: .executingAction)
         
         Task {
-            let config = getConfigForGesture(gestureType)
-            let result = await executeActionUseCase.executeAction(config: config)
-            await handleActionResult(result)
+            let summary = await executeActionUseCase.executeActions(for: gestureType)
+            await handleExecutionSummary(summary)
         }
     }
     
-    private func getConfigForGesture(_ gestureType: GestureType) -> ExecuteGestureActionUseCase.ActionConfig {
-        switch gestureType {
-        case .heart:
-            return ExecuteGestureActionUseCase.ActionConfig(
-                hotkeyKey: .hotkeyConfig,
-                commandKey: .commandString,
-                actionTypeKey: .actionType
-            )
-        case .thumbsUp:
-            return ExecuteGestureActionUseCase.ActionConfig(
-                hotkeyKey: .thumbsUpHotkeyConfig,
-                commandKey: .thumbsUpCommandString,
-                actionTypeKey: .thumbsUpActionType
-            )
-        case .peace:
-            return ExecuteGestureActionUseCase.ActionConfig(
-                hotkeyKey: .peaceHotkeyConfig,
-                commandKey: .peaceCommandString,
-                actionTypeKey: .peaceActionType
-            )
-        }
-    }
-    
-    private func handleActionResult(_ result: ExecuteGestureActionUseCase.ActionResult) async {
+    private func handleExecutionSummary(_ summary: ExecuteGestureActionUseCase.ExecutionSummary) async {
         await MainActor.run {
-            switch result {
-            case .commitSuccess:
-                print("AppCoordinator: コミット成功")
+            if summary.results.isEmpty {
+                print("AppCoordinator: アクションが設定されていません")
+                self.transition(to: .commitError(NSError(
+                    domain: "AppCoordinator",
+                    code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "アクションが設定されていません"]
+                )))
+                return
+            }
+            
+            if summary.allSucceeded {
+                print("AppCoordinator: 全アクション成功 - \(summary.summaryMessage)")
                 self.transition(to: .commitSuccess)
                 self.scheduleReset()
-                
-            case .shortcutSuccess:
-                print("AppCoordinator: ショートカット成功")
-                self.transition(to: .shortcutSuccess)
-                self.scheduleReset()
-                
-            case .commandSuccess(let shellResult):
-                print("AppCoordinator: コマンド成功")
-                self.commandResult = shellResult
-                self.transition(to: .commitSuccess)
-                self.scheduleReset()
-                
-            case .error(let error):
-                print("AppCoordinator: アクション失敗 - \(error.localizedDescription)")
-                self.transition(to: .commitError(error))
-                // エラー時はリセットをスケジュールしない - ユーザーが手動でウィンドウを閉じる必要がある
+            } else {
+                // 一部失敗でも成功があればsuccess扱いで自動リセット
+                if summary.successCount > 0 {
+                    print("AppCoordinator: 一部成功 - \(summary.summaryMessage)")
+                    self.transition(to: .commitSuccess)
+                    self.scheduleReset()
+                } else {
+                    // 全失敗の場合のみエラー表示
+                    print("AppCoordinator: 全アクション失敗")
+                    if let firstError = summary.results.compactMap({ result -> Error? in
+                        if case .error(let error) = result { return error }
+                        return nil
+                    }).first {
+                        self.transition(to: .commitError(firstError))
+                    }
+                }
             }
         }
     }

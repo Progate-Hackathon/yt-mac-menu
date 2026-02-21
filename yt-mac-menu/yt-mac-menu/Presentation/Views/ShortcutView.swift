@@ -2,9 +2,6 @@ import SwiftUI
 
 struct ShortcutView: View {
     @StateObject private var viewModel = ShortcutViewModel()
-    @State private var showRecorderPopover = false
-    @State private var showPeaceRecorderPopover = false
-    @State private var showThumbsUpRecorderPopover = false
     @State private var showSnapTriggerPopover = false
     
     var body: some View {
@@ -15,84 +12,17 @@ struct ShortcutView: View {
             Divider()
             
             // セクション: ハートジェスチャーアクション
-            GestureActionSection(
-                gestureName: "ハート検出時のアクション",
-                gestureEmoji: "🫶",
-                actionType: $viewModel.actionType,
-                hotkey: $viewModel.currentHotkey,
-                commandString: $viewModel.commandString,
-                showRecorderPopover: $showRecorderPopover,
-                showSuccess: $viewModel.showSuccess,
-                tempModifiers: $viewModel.tempModifiers,
-                tempKeyDisplay: $viewModel.tempKeyDisplay,
-                onActionTypeChange: { viewModel.saveActionType($0) },
-                onSaveCommand: { viewModel.saveCommand() },
-                onStartRecording: {
-                    showRecorderPopover = true
-                    viewModel.onRecordingComplete = { showRecorderPopover = false }
-                    viewModel.startRecording(for: .heart)
-                },
-                onStopRecording: { viewModel.stopRecording() },
-                onTestShortcut: { viewModel.runTestShortcut() }
-            )
+            GestureActionSection(gestureType: .heart, viewModel: viewModel)
             
             Divider()
             
             // セクション: ピースジェスチャーアクション
-            GestureActionSection(
-                gestureName: "ピース検出時のアクション",
-                gestureEmoji: "✌️",
-                actionType: $viewModel.peaceActionType,
-                hotkey: $viewModel.peaceHotkey,
-                commandString: $viewModel.peaceCommandString,
-                showRecorderPopover: $showPeaceRecorderPopover,
-                showSuccess: $viewModel.showSuccess,
-                tempModifiers: $viewModel.tempModifiers,
-                tempKeyDisplay: $viewModel.tempKeyDisplay,
-                onActionTypeChange: { viewModel.savePeaceActionType($0) },
-                onSaveCommand: { viewModel.savePeaceCommand() },
-                onStartRecording: {
-                    showPeaceRecorderPopover = true
-                    viewModel.onRecordingComplete = { showPeaceRecorderPopover = false }
-                    viewModel.startRecording(for: .peace)
-                },
-                onStopRecording: { viewModel.stopRecording() },
-                onTestShortcut: {
-                    KeySender.activatePreviousAppAndSimulateShortcut(
-                        keyCode: viewModel.peaceHotkey.keyCode,
-                        modifiers: viewModel.peaceHotkey.modifiers
-                    )
-                }
-            )
+            GestureActionSection(gestureType: .peace, viewModel: viewModel)
             
             Divider()
             
             // セクション: サムズアップジェスチャーアクション
-            GestureActionSection(
-                gestureName: "サムズアップ検出時のアクション",
-                gestureEmoji: "👍",
-                actionType: $viewModel.thumbsUpActionType,
-                hotkey: $viewModel.thumbsUpHotkey,
-                commandString: $viewModel.thumbsUpCommandString,
-                showRecorderPopover: $showThumbsUpRecorderPopover,
-                showSuccess: $viewModel.showSuccess,
-                tempModifiers: $viewModel.tempModifiers,
-                tempKeyDisplay: $viewModel.tempKeyDisplay,
-                onActionTypeChange: { viewModel.saveThumbsUpActionType($0) },
-                onSaveCommand: { viewModel.saveThumbsUpCommand() },
-                onStartRecording: {
-                    showThumbsUpRecorderPopover = true
-                    viewModel.onRecordingComplete = { showThumbsUpRecorderPopover = false }
-                    viewModel.startRecording(for: .thumbsUp)
-                },
-                onStopRecording: { viewModel.stopRecording() },
-                onTestShortcut: {
-                    KeySender.activatePreviousAppAndSimulateShortcut(
-                        keyCode: viewModel.thumbsUpHotkey.keyCode,
-                        modifiers: viewModel.thumbsUpHotkey.modifiers
-                    )
-                }
-            )
+            GestureActionSection(gestureType: .thumbsUp, viewModel: viewModel)
         }
     }
     // MARK: - Snap Trigger Section
