@@ -15,9 +15,8 @@ class GitRepository: GitRepositoryProtocol {
     /// リモートoriginのURLから "username/repo" 形式のリポジトリ名を取得する
     func getRepositoryName(projectPath: String) throws -> String {
         // ターミナルコマンド git config --get remote.origin.url
-        guard let remoteURL = executeGitCommand(arguments: ["config", "--get", "remote.origin.url"], at: projectPath) else {
-            throw GitError.commandFailed("Failed to get remote URL")
-        }
+        let remoteURL = try getRemoteOriginURL(projectPath: projectPath)
+
         let (repoName, _) = extractRepositoryNameAndOwnerName(from: remoteURL)
         
         guard let repoName else {
@@ -47,9 +46,7 @@ class GitRepository: GitRepositoryProtocol {
     /// リポジトリのオーナー名を取得する
     func getOwner(projectPath: String) throws -> String {
         // ターミナルコマンド git config --get remote.origin.url
-        guard let remoteURL = executeGitCommand(arguments: ["config", "--get", "remote.origin.url"], at: projectPath) else {
-            throw GitError.commandFailed("Failed to get remote URL")
-        }
+        let remoteURL = try getRemoteOriginURL(projectPath: projectPath)
 
         let (_, owner) = extractRepositoryNameAndOwnerName(from: remoteURL)
         
@@ -82,6 +79,14 @@ class GitRepository: GitRepositoryProtocol {
             .map { String($0).trimmingCharacters(in: .whitespaces) }
 
         return branches
+    }
+    
+    
+    func getRemoteOriginURL(projectPath: String) throws -> String {
+        guard let remoteURL = executeGitCommand(arguments: ["config", "--get", "remote.origin.url"], at: projectPath) else {
+            throw GitError.commandFailed("Failed to get remote URL")
+        }
+        return remoteURL
     }
 
     // MARK: - Private Method

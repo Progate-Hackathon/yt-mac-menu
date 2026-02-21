@@ -10,6 +10,7 @@ import Foundation
 
 protocol GitRepositoryProtocol {
     func getRepositoryName(projectPath: String) throws -> String
+    func getRemoteOriginURL(projectPath: String) throws -> String
     func getCurrentBranch(projectPath: String) throws -> String
     func getDiff(projectPath: String) throws -> String
     func getOwner(projectPath: String) throws -> String
