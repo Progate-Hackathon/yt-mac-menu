@@ -10,14 +10,14 @@ import Foundation
 /// プロジェクトのGit情報（リポジトリ名、ブランチ名）を取得するRepositoryクラス
 class GitRepository: GitRepositoryProtocol {
     
-
+    
     // MARK: - Public Methods (GitRepositoryProtocol Implementation)
     
     /// リモートoriginのURLから "username/repo" 形式のリポジトリ名を取得する
     func getRepositoryName(projectPath: String) throws -> String {
         // ターミナルコマンド git config --get remote.origin.url
         let remoteURL = try getRemoteOriginURL(projectPath: projectPath)
-
+        
         let (repoName, _) = extractRepositoryNameAndOwnerName(from: remoteURL)
         
         guard let repoName else {
@@ -26,7 +26,7 @@ class GitRepository: GitRepositoryProtocol {
         
         return repoName
     }
-
+    
     /// 現在チェックアウトしているブランチ名を取得する
     func getCurrentBranch(projectPath: String) throws -> String {
         // ターミナルコマンド git rev-parse --abbrev-ref HEAD
@@ -42,7 +42,7 @@ class GitRepository: GitRepositoryProtocol {
     func getOwner(projectPath: String) throws -> String {
         // ターミナルコマンド git config --get remote.origin.url
         let remoteURL = try getRemoteOriginURL(projectPath: projectPath)
-
+        
         let (_, owner) = extractRepositoryNameAndOwnerName(from: remoteURL)
         
         guard let owner else {
@@ -65,15 +65,15 @@ class GitRepository: GitRepositoryProtocol {
             arguments: ["branch", "--format=%(refname:short)"],
             at: projectPath
         )
-
+        
         let branches = output
             .split(separator: "\n")
             .map { String($0).trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
-
+        
         return branches
     }
-
+    
     func fetchRemoteBranches(projectPath: String) throws {
         try executeGitCommand(arguments: ["fetch", "--all"], at: projectPath)
     }
@@ -98,17 +98,17 @@ class GitRepository: GitRepositoryProtocol {
             arguments: arguments,
             at: path
         )
-
+        
         guard result.isSuccess else {
             let detail = result.stderr.isEmpty
-                ? "exit code \(result.exitCode)"
-                : result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+            ? "exit code \(result.exitCode)"
+            : result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
             throw GitError.commandFailed("git \(arguments.joined(separator: " ")): \(detail)")
         }
-
+        
         return result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
     }
-
+    
     /// リモートURLから owner と repo を抽出する
     /// リモートURLから owner と repo を抽出する
     private func extractRepositoryNameAndOwnerName(from remoteURL: String)
@@ -167,10 +167,10 @@ enum GitError: LocalizedError {
     
     var errorDescription: String? {
         switch self {
-        case .commandFailed(let message):
-            return "Gitコマンドエラー: \(message)"
-        case .invalidFormat(let message):
-            return "Git形式エラー: \(message)"
+            case .commandFailed(let message):
+                return "Gitコマンドエラー: \(message)"
+            case .invalidFormat(let message):
+                return "Git形式エラー: \(message)"
         }
     }
 }

@@ -192,14 +192,13 @@ class GestureCameraViewModel: ObservableObject {
     }
     
     private func checkPermission() {
-        cameraUseCase.requestPermission { [weak self] granted in
-            guard let self = self else { return }
-            if granted {
-                self.cameraUseCase.setupCamera()
-                self.gestureCameraViewState = .detectingGesture
-            } else {
-                self.gestureCameraViewState = .unauthorized
-            }
+        // 既に権限があるかどうかだけチェック（リクエストは AppCoordinator で行う）
+        if cameraUseCase.checkPermissionStatus() {
+            cameraUseCase.setupCamera()
+            gestureCameraViewState = .detectingGesture
+        } else {
+            // 権限がない場合は unauthorized 状態にする（ガイドUIが表示される）
+            gestureCameraViewState = .unauthorized
         }
     }
 }
