@@ -40,6 +40,7 @@ struct SettingsView: View {
             
             VStack {
                 ShortcutView()
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding()
             .tabItem {

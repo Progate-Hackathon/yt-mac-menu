@@ -1,6 +1,7 @@
 import Foundation
 
 enum AppState: Equatable {
+    case idle           // 接続済み、ショートカット待機中（snap検知は未開始）
     case listeningForSnap
     case snapDetected
     case detectingHeart
@@ -13,7 +14,8 @@ enum AppState: Equatable {
     
     static func == (lhs: AppState, rhs: AppState) -> Bool {
         switch (lhs, rhs) {
-        case (.listeningForSnap, .listeningForSnap),
+        case (.idle, .idle),
+             (.listeningForSnap, .listeningForSnap),
              (.snapDetected, .snapDetected),
              (.detectingHeart, .detectingHeart),
              (.heartDetected, .heartDetected),
@@ -31,6 +33,8 @@ enum AppState: Equatable {
     
     var description: String {
         switch self {
+        case .idle:
+            return "Idle (Waiting for Shortcut)"
         case .listeningForSnap:
             return "Listening for Snap"
         case .snapDetected:

@@ -2,12 +2,13 @@ import Foundation
 import Combine
 
 class AppCoordinator: ObservableObject {
-    @Published private(set) var currentState: AppState = .listeningForSnap
+    @Published private(set) var currentState: AppState = .idle
     @Published private(set) var isCameraVisible: Bool = false
     
     private let gestureRepository: GestureRepositoryProtocol
     private let sendCommitDataUseCase: SendCommitDataUseCase
     private let cameraManagementUseCase: CameraManagementUseCase
+    private let globalHotkeyService = GlobalHotkeyService()
     private var cancellables = Set<AnyCancellable>()
     private var resetWorkItem: DispatchWorkItem?
     private var isRequestingCameraPermission = false
@@ -26,13 +27,19 @@ class AppCoordinator: ObservableObject {
     func start() {
         // アクティブアプリの監視を開始
         KeySender.startObservingActiveApp()
+        // グローバルショートカット監視を開始
+        globalHotkeyService.onTrigger = { [weak self] in
+            self?.handleSnapTriggerShortcut()
+        }
+        globalHotkeyService.start()
         gestureRepository.connect()
     }
     
     func stop() {
         gestureRepository.disconnect()
+        globalHotkeyService.stop()
         KeySender.stopObservingActiveApp()
-        transition(to: .listeningForSnap)
+        transition(to: .idle)
     }
     
     func handleWindowClose() {
@@ -57,9 +64,8 @@ class AppCoordinator: ObservableObject {
                 self?.transition(to: .resetting)
                 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    self?.transition(to: .listeningForSnap)
+                    self?.transition(to: .idle)
                     self?.gestureRepository.sendCommand(.disableHeart)
-                    self?.gestureRepository.sendCommand(.enableSnap)
                 }
             }
             
@@ -68,13 +74,22 @@ class AppCoordinator: ObservableObject {
             print("AppCoordinator: リセット処理中のため何もしません")
             isCameraVisible = false
             
-        default:
-            // その他の状態では単にカメラを非表示にしてスナップ待機に戻る
+        case .idle:
+            // snap検知はOFF状態なので何もしない
+            print("AppCoordinator: idle状態のためウィンドウクローズを無視")
+            isCameraVisible = false
+
+        case .listeningForSnap:
+            // snap検知ON状態を維持して再開
             print("AppCoordinator: カメラを非表示にしてスナップ待機に戻ります")
+            isCameraVisible = false
+
+        case .snapDetected:
+            // スナップ検出直後（カメラ未起動）に閉じた場合はsnap検知を再開する
+            print("AppCoordinator: snapDetected中に閉じられました → snap検知を再開")
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
                 self?.isCameraVisible = false
                 self?.transition(to: .listeningForSnap)
-                self?.gestureRepository.sendCommand(.disableHeart)
                 self?.gestureRepository.sendCommand(.enableSnap)
             }
         }
@@ -105,15 +120,35 @@ class AppCoordinator: ObservableObject {
     }
     
     private func handleConnected() {
-        print("AppCoordinator: WebSocket接続完了")
-        transition(to: .listeningForSnap)
-        gestureRepository.sendCommand(.enableSnap)
+        print("AppCoordinator: WebSocket接続完了 → ショートカット待機中")
+        transition(to: .idle)
     }
     
     private func handleDisconnected() {
         print("AppCoordinator: WebSocket切断")
-        transition(to: .listeningForSnap)
+        if currentState == .listeningForSnap {
+            gestureRepository.sendCommand(.disableSnap)
+        }
+        transition(to: .idle)
         isCameraVisible = false
+    }
+    
+    private func handleSnapTriggerShortcut() {
+        switch currentState {
+        case .idle:
+            // snap検知をONにする
+            print("AppCoordinator: snap検知トリガーショートカット → enableSnap（ON）")
+            transition(to: .listeningForSnap)
+            gestureRepository.sendCommand(.enableSnap)
+        case .listeningForSnap:
+            // snap検知をOFFにする
+            print("AppCoordinator: snap検知トリガーショートカット → disableSnap（OFF）")
+            gestureRepository.sendCommand(.disableSnap)
+            transition(to: .idle)
+        default:
+            // snap検知サイクル中（snapDetected〜resetting）は無視
+            print("AppCoordinator: snap検知サイクル中のためトグルを無視 (\(currentState.description))")
+        }
     }
     
     private func handleSnapDetected() {
@@ -159,9 +194,8 @@ class AppCoordinator: ObservableObject {
                 self.cameraManagementUseCase.setupCamera()
                 self.openCameraWindow()
             } else {
-                print("AppCoordinator: カメラ権限が拒否されました → スナップ待機に戻ります")
-                self.transition(to: .listeningForSnap)
-                self.gestureRepository.sendCommand(.enableSnap)
+                print("AppCoordinator: カメラ権限が拒否されました → ショートカット待機に戻ります")
+                self.transition(to: .idle)
             }
         }
     }
@@ -252,8 +286,7 @@ class AppCoordinator: ObservableObject {
             self.isCameraVisible = false
             
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                self.transition(to: .listeningForSnap)
-                self.gestureRepository.sendCommand(.enableSnap)
+                self.transition(to: .idle)
             }
         }
         
