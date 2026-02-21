@@ -226,8 +226,8 @@ class AppCoordinator: ObservableObject {
             return
         }
         
-        print("AppCoordinator: \(gestureType.displayName)検出 - カウントダウン開始")
-        gestureRepository.sendCommand(.disableGesture)
+        print("AppCoordinator: \(gestureType.displayName)検出 - カウントダウン開始（ジェスチャー検出は継続）")
+        // ジェスチャー検出は継続（gesture_lost イベントを受信するため）
         startCountdown(for: gestureType)
     }
     
@@ -285,6 +285,8 @@ class AppCoordinator: ObservableObject {
     }
     
     private func executeActionForGesture(_ gestureType: GestureType) {
+        print("AppCoordinator: カウントダウン完了 - アクション実行開始")
+        gestureRepository.sendCommand(.disableGesture)
         transition(to: .executingAction)
         
         Task {
