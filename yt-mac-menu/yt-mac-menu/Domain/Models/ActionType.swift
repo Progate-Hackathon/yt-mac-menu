@@ -4,6 +4,7 @@ import Foundation
 enum ActionType: String, Codable, CaseIterable {
     case commit = "commit"
     case shortcut = "shortcut"
+    case command = "command"
     
     var displayName: String {
         switch self {
@@ -11,6 +12,8 @@ enum ActionType: String, Codable, CaseIterable {
             return "コミット"
         case .shortcut:
             return "ショートカット"
+        case .command:
+            return "コマンド実行"
         }
     }
     
@@ -20,6 +23,8 @@ enum ActionType: String, Codable, CaseIterable {
             return "変更内容をAIが要約してGitHubにコミットします"
         case .shortcut:
             return "直前に使用していたアプリでショートカットキーを実行します"
+        case .command:
+            return "ハート検出時に指定したシェルコマンドを実行します"
         }
     }
 }

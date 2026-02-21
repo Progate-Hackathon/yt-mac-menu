@@ -4,6 +4,7 @@ import Combine
 class AppCoordinator: ObservableObject {
     @Published private(set) var currentState: AppState = .idle
     @Published private(set) var isCameraVisible: Bool = false
+    @Published var commandResult: ShellResult? = nil
     
     private let gestureRepository: GestureRepositoryProtocol
     private let sendCommitDataUseCase: SendCommitDataUseCase
@@ -48,6 +49,7 @@ class AppCoordinator: ObservableObject {
         
         resetWorkItem?.cancel()
         isRequestingCameraPermission = false
+        commandResult = nil
         
         // まずカメラを明示的に停止（ウィンドウ破棄前に）
         print("AppCoordinator: カメラを停止します")
@@ -230,12 +232,13 @@ class AppCoordinator: ObservableObject {
                 await sendCommitData()
             case .shortcut:
                 executeShortcut()
+            case .command:
+                await executeCommand()
             }
         }
     }
     
-    private func executeShortcut() {
-        guard let hotkey = UserDefaultsManager.shared.get(key: .hotkeyConfig, type: Hotkey.self) else {
+    private func executeShortcut() {        guard let hotkey = UserDefaultsManager.shared.get(key: .hotkeyConfig, type: Hotkey.self) else {
             print("AppCoordinator: ホットキーが設定されていません")
             transition(to: .shortcutSuccess)
             scheduleReset()
@@ -248,18 +251,39 @@ class AppCoordinator: ObservableObject {
         transition(to: .shortcutSuccess)
         scheduleReset()
     }
-    
+
+    private func executeCommand() async {
+        guard let command = UserDefaultsManager.shared.get(key: .commandString, type: String.self),
+              !command.isEmpty else {
+            print("AppCoordinator: コマンドが設定されていません")
+            await MainActor.run {
+                self.commandResult = ShellResult(stdout: "", stderr: "コマンドが設定されていません。設定画面から入力してください。", exitCode: -1)
+                self.transition(to: .commitError(NSError(domain: "AppCoordinator", code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "コマンドが設定されていません"])))
+            }
+            return
+        }
+        print("AppCoordinator: コマンド実行 - \(command)")
+        transition(to: .committingData)
+        let result = await ShellExecutor.execute(command: command)
+        await MainActor.run {
+            self.commandResult = result
+            if result.isSuccess {
+                self.transition(to: .commitSuccess)
+            } else {
+                self.transition(to: .commitError(NSError(domain: "ShellExecutor", code: Int(result.exitCode),
+                    userInfo: [NSLocalizedDescriptionKey: result.stderr.isEmpty ? "コマンドが失敗しました (exit \(result.exitCode))" : result.stderr])))
+            }
+        }
+    }
+
     private func sendCommitData() async {
         transition(to: .committingData)
         do {
             try await sendCommitDataUseCase.sendCommitData()
-            await MainActor.run {
-                self.handleCommitSuccess()
-            }
+            await MainActor.run { self.handleCommitSuccess() }
         } catch {
-            await MainActor.run {
-                self.handleCommitError(error)
-            }
+            await MainActor.run { self.handleCommitError(error) }
         }
     }
     

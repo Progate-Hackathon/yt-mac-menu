@@ -21,6 +21,10 @@ final class ShortcutViewModel: ObservableObject {
     @Published var showSnapTriggerError: String? = nil
     @Published var tempSnapModifiers: NSEvent.ModifierFlags = []
     @Published var tempSnapKeyDisplay: String = ""
+
+    // コマンド実行用
+    @Published var commandString: String = ""
+
     var onRecordingComplete: (() -> Void)?
     var onSnapRecordingComplete: (() -> Void)?
 
@@ -37,6 +41,7 @@ final class ShortcutViewModel: ObservableObject {
         self.snapTriggerHotkey = savedSnapTrigger
         self.snapTriggerPreviewHotkey = savedSnapTrigger
             ?? Hotkey(modifiers: [], keyCode: 0, keyDisplay: "")
+        self.commandString = UserDefaultsManager.shared.get(key: .commandString, type: String.self) ?? ""
 
         setupRecorderCallbacks()
         setupSnapTriggerCallbacks()
@@ -184,6 +189,11 @@ final class ShortcutViewModel: ObservableObject {
     func saveActionType(_ type: ActionType) {
         UserDefaultsManager.shared.save(key: .actionType, value: type)
         actionType = type
+    }
+
+    func saveCommand() {
+        UserDefaultsManager.shared.save(key: .commandString, value: commandString)
+        print("ShortcutViewModel: コマンド保存 - \(commandString)")
     }
 
     func runTestShortcut() {
