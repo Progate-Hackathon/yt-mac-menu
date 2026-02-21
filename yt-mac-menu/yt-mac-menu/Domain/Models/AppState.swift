@@ -58,7 +58,7 @@ enum AppState: Equatable {
             case .resetting:
                 return "Resetting"
             case .thumbsUpDetected:
-                return "Thumb Detected"
+                return "Thumb up Detected"
             case .peaceDetected:
                 return "Peace Detected"
         }
