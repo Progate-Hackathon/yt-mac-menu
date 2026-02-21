@@ -18,6 +18,16 @@ struct SettingsView: View {
     var body: some View {
         TabView {
             VStack {
+                ShortcutView()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding()
+            .tabItem {
+                Label("アクション", systemImage: "hand.draw")
+            }
+            .tag("shortcuts")
+
+            VStack {
                 ProjectPathSectionView(selectedProjectPath: $settingsViewModel.selectedProjectPath)
                 GitHubTokenSectionView(gitHubAccessToken: $settingsViewModel.githubToken)
                 if basicSettingsAreSet {
@@ -55,19 +65,10 @@ struct SettingsView: View {
             }
             .padding()
             .tabItem {
-                Label("一般", systemImage: "gear")
+                Label("コミット設定", systemImage: "gear")
             }
             .tag("general")
             
-            VStack {
-                ShortcutView()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .padding()
-            .tabItem {
-                Label("ショートカット", systemImage: "hand.draw")
-            }
-            .tag("shortcuts")
         }
         .animation(.default, value: basicSettingsAreSet)
         .frame(width: 480)

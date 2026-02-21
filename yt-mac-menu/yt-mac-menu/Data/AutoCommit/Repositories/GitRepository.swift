@@ -84,10 +84,8 @@ class GitRepository: GitRepositoryProtocol {
     }
 
     func fetchRemoteBranches(projectPath: String) throws {
-        guard let _ = executeGitCommand(
-            arguments: ["fetch", "--all"],
-            at: projectPath
-        ) else {
+        let errorString = executeGitCommand(arguments: ["fetch", "--all"], at: projectPath)
+        if errorString != nil {
             throw GitError.commandFailed("リモートブランチの取得に失敗")
         }
     }
@@ -103,9 +101,9 @@ class GitRepository: GitRepositoryProtocol {
     // MARK: - Private Method
     
     private func executeGitCommand(arguments: [String], at path: String) -> String? {
-        let result = ShellExecutor.executeSync(
-            command: "/usr/bin/git " + arguments.joined(separator: " "),
-            workingDirectory: path
+        let result = GitExecutor.executeSync(
+            arguments: arguments,
+            at: path
         )
 
         guard result.isSuccess else {

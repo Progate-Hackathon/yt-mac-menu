@@ -7,7 +7,7 @@ class AppCoordinator: ObservableObject {
     @Published var commandResult: ShellResult? = nil
     
     private let gestureRepository: GestureRepositoryProtocol
-    private let sendCommitDataUseCase: SendCommitDataUseCase
+    private let executeActionUseCase: ExecuteGestureActionUseCase
     private let cameraManagementUseCase: CameraManagementUseCase
     private let globalHotkeyService = GlobalHotkeyService()
     private var cancellables = Set<AnyCancellable>()
@@ -16,11 +16,11 @@ class AppCoordinator: ObservableObject {
     
     init(
         gestureRepository: GestureRepositoryProtocol,
-        sendCommitDataUseCase: SendCommitDataUseCase,
+        executeActionUseCase: ExecuteGestureActionUseCase,
         cameraManagementUseCase: CameraManagementUseCase
     ) {
         self.gestureRepository = gestureRepository
-        self.sendCommitDataUseCase = sendCommitDataUseCase
+        self.executeActionUseCase = executeActionUseCase
         self.cameraManagementUseCase = cameraManagementUseCase
         setupBindings()
     }
@@ -56,7 +56,7 @@ class AppCoordinator: ObservableObject {
         cameraManagementUseCase.stopCamera()
         
         switch currentState {
-            case .detectingHeart, .heartDetected, .committingData, .commitSuccess, .commitError, .shortcutSuccess:
+            case .detectingGesture, .thumbsUpDetected, .peaceDetected, .heartDetected, .committingData, .commitSuccess, .commitError, .shortcutSuccess:
             // ハート検出中、処理中、またはエラー状態から閉じる場合は、スナップ待機モードに戻る
             print("AppCoordinator: スナップ待機モードへリセット")
             
@@ -67,7 +67,7 @@ class AppCoordinator: ObservableObject {
                 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     self?.transition(to: .idle)
-                    self?.gestureRepository.sendCommand(.disableHeart)
+                    self?.gestureRepository.sendCommand(.disableGesture)
                 }
             }
             
@@ -86,7 +86,7 @@ class AppCoordinator: ObservableObject {
             print("AppCoordinator: カメラを非表示にしてスナップ待機に戻ります")
             isCameraVisible = false
 
-        case .snapDetected:
+            case .snapDetected:
             // スナップ検出直後（カメラ未起動）に閉じた場合はsnap検知を再開する
             print("AppCoordinator: snapDetected中に閉じられました → snap検知を再開")
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
@@ -112,10 +112,14 @@ class AppCoordinator: ObservableObject {
             handleConnected()
         case .disconnected:
             handleDisconnected()
-        case .snapDetected:
+        case .audioDetected(.snap):
             handleSnapDetected()
-        case .heartDetected:
+        case .gestureDetected(.heart):
             handleHeartDetected()
+        case .gestureDetected(.thumbsUp):
+            handleThumbsUpDetected()
+        case .gestureDetected(.peace):
+            handlePeaceDetected()
         case .handCount:
             break
         }
@@ -207,96 +211,100 @@ class AppCoordinator: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
             guard let self = self else { return }
             print("AppCoordinator: ウィンドウを開いてハート検出を有効化")
-            self.gestureRepository.sendCommand(.enableHeart)
+            self.gestureRepository.sendCommand(.enableGesture)
             self.isCameraVisible = true
-            self.transition(to: .detectingHeart)
+            self.transition(to: .detectingGesture)
         }
     }
     
     private func handleHeartDetected() {
-        guard currentState == .detectingHeart else {
+        guard currentState == .detectingGesture else {
             print("AppCoordinator: ハート検出されましたが、状態が不正です (\(currentState.description))")
             return
         }
+        
+        print("AppCoordinator: ハート検出")
+        gestureRepository.sendCommand(.disableGesture)
+        transition(to: .heartDetected)
+        
         Task {
-            // アクションタイプを取得
-            let actionType = UserDefaultsManager.shared.get(key: .actionType, type: ActionType.self) ?? .commit
-            
-            print("AppCoordinator: ハート検出 → アクション実行 (\(actionType.displayName))")
-            transition(to: .heartDetected)
-            gestureRepository.sendCommand(.disableHeart)
-            
-            // アクションタイプに応じて処理を分岐
-            switch actionType {
-            case .commit:
-                await sendCommitData()
-            case .shortcut:
-                executeShortcut()
-            case .command:
-                await executeCommand()
-            }
+            let config = ExecuteGestureActionUseCase.ActionConfig(
+                hotkeyKey: .hotkeyConfig,
+                commandKey: .commandString,
+                actionTypeKey: .actionType
+            )
+            let result = await executeActionUseCase.executeAction(config: config)
+            await handleActionResult(result)
         }
     }
     
-    private func executeShortcut() {        guard let hotkey = UserDefaultsManager.shared.get(key: .hotkeyConfig, type: Hotkey.self) else {
-            print("AppCoordinator: ホットキーが設定されていません")
-            transition(to: .shortcutSuccess)
-            scheduleReset()
+    private func handleThumbsUpDetected() {
+        guard currentState == .detectingGesture else {
+            print("AppCoordinator: サムズアップ検出されましたが、状態が不正です (\(currentState.description))")
             return
         }
-
-        print("AppCoordinator: ショートカット実行 - \(hotkey.displayString)")
-        KeySender.activatePreviousAppAndSimulateShortcut(keyCode: hotkey.keyCode, modifiers: hotkey.modifiers)
-
-        transition(to: .shortcutSuccess)
-        scheduleReset()
+        
+        print("AppCoordinator: サムズアップ検出")
+        gestureRepository.sendCommand(.disableGesture)
+        transition(to: .thumbsUpDetected)
+        
+        Task {
+            let config = ExecuteGestureActionUseCase.ActionConfig(
+                hotkeyKey: .thumbsUpHotkeyConfig,
+                commandKey: .thumbsUpCommandString,
+                actionTypeKey: .thumbsUpActionType
+            )
+            let result = await executeActionUseCase.executeAction(config: config)
+            await handleActionResult(result)
+        }
     }
-
-    private func executeCommand() async {
-        guard let command = UserDefaultsManager.shared.get(key: .commandString, type: String.self),
-              !command.isEmpty else {
-            print("AppCoordinator: コマンドが設定されていません")
-            await MainActor.run {
-                self.commandResult = ShellResult(stdout: "", stderr: "コマンドが設定されていません。設定画面から入力してください。", exitCode: -1)
-                self.transition(to: .commitError(NSError(domain: "AppCoordinator", code: -1,
-                    userInfo: [NSLocalizedDescriptionKey: "コマンドが設定されていません"])))
-            }
+    
+    private func handlePeaceDetected() {
+        guard currentState == .detectingGesture else {
+            print("AppCoordinator: ピース検出されましたが、状態が不正です (\(currentState.description))")
             return
         }
-        print("AppCoordinator: コマンド実行 - \(command)")
-        transition(to: .committingData)
-        let result = await ShellExecutor.execute(command: command)
+        
+        print("AppCoordinator: ピース検出")
+        gestureRepository.sendCommand(.disableGesture)
+        transition(to: .peaceDetected)
+        
+        Task {
+            let config = ExecuteGestureActionUseCase.ActionConfig(
+                hotkeyKey: .peaceHotkeyConfig,
+                commandKey: .peaceCommandString,
+                actionTypeKey: .peaceActionType
+            )
+            let result = await executeActionUseCase.executeAction(config: config)
+            await handleActionResult(result)
+        }
+    }
+    
+    private func handleActionResult(_ result: ExecuteGestureActionUseCase.ActionResult) async {
         await MainActor.run {
-            self.commandResult = result
-            if result.isSuccess {
+            switch result {
+            case .commitSuccess:
+                print("AppCoordinator: コミット成功")
                 self.transition(to: .commitSuccess)
-            } else {
-                self.transition(to: .commitError(NSError(domain: "ShellExecutor", code: Int(result.exitCode),
-                    userInfo: [NSLocalizedDescriptionKey: result.stderr.isEmpty ? "コマンドが失敗しました (exit \(result.exitCode))" : result.stderr])))
+                self.scheduleReset()
+                
+            case .shortcutSuccess:
+                print("AppCoordinator: ショートカット成功")
+                self.transition(to: .shortcutSuccess)
+                self.scheduleReset()
+                
+            case .commandSuccess(let shellResult):
+                print("AppCoordinator: コマンド成功")
+                self.commandResult = shellResult
+                self.transition(to: .commitSuccess)
+                self.scheduleReset()
+                
+            case .error(let error):
+                print("AppCoordinator: アクション失敗 - \(error.localizedDescription)")
+                self.transition(to: .commitError(error))
+                // エラー時はリセットをスケジュールしない - ユーザーが手動でウィンドウを閉じる必要がある
             }
         }
-    }
-
-    private func sendCommitData() async {
-        transition(to: .committingData)
-        do {
-            try await sendCommitDataUseCase.sendCommitData()
-            await MainActor.run { self.handleCommitSuccess() }
-        } catch {
-            await MainActor.run { self.handleCommitError(error) }
-        }
-    }
-    
-    private func handleCommitSuccess() {
-        print("AppCoordinator: コミット成功")
-        transition(to: .commitSuccess)
-        scheduleReset()
-    }
-    
-    private func handleCommitError(_ error: Error) {
-        print("AppCoordinator: コミット失敗 - \(error.localizedDescription)")
-        transition(to: .commitError(error))
-        // エラー時はリセットをスケジュールしない - ユーザーが手動でウィンドウを閉じる必要がある
     }
     
     private func scheduleReset() {
