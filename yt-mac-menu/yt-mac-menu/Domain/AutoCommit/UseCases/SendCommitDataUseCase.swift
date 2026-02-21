@@ -46,6 +46,12 @@ class SendCommitDataUseCase {
         let changedFilePaths = try gitRepository.getChangedFilePaths(projectPath: projectPath)
         let owner = try gitRepository.getOwner(projectPath: projectPath)
         
+        // 変更がない場合はエラー
+        guard !changedFilePaths.isEmpty else {
+            print("CommitDataModelUseCase: 変更されたファイルがありません")
+            throw CommitDataModelUseCaseError.noChanges
+        }
+        
         // GitHubトークンを取得
         guard let githubToken = UserDefaultsManager.shared.get(key: .githubToken, type: String.self) else {
             print("CommitDataModelUseCase: GitHubトークンが見つかりません")
@@ -128,6 +134,7 @@ enum CommitDataModelUseCaseError: LocalizedError {
     case projectPathNotFound
     case gitInfoError(String)
     case fileReadError(path: String, reason: String)
+    case noChanges
     
     var errorDescription: String? {
         switch self {
@@ -139,6 +146,8 @@ enum CommitDataModelUseCaseError: LocalizedError {
                 return "Git情報の取得に失敗しました: \(message)"
             case .fileReadError(let path, let reason):
                 return "ファイルの読み込みに失敗しました (\(path)): \(reason)"
+            case .noChanges:
+                return "コミットする変更がありません"
         }
     }
     
@@ -152,6 +161,8 @@ enum CommitDataModelUseCaseError: LocalizedError {
                 return "Gitリポジトリの状態を確認してから再試行してください。"
             case .fileReadError:
                 return "ファイルのアクセス権限、エンコーディング、ディスク容量を確認してから再試行してください。"
+            case .noChanges:
+                return "ファイルを編集してから再試行してください。"
         }
     }
 }

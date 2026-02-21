@@ -118,6 +118,13 @@ struct ErrorStateView: View {
             return "認証エラー"
         } else if error is GitError {
             return "Git操作エラー"
+        } else if let useCaseError = error as? CommitDataModelUseCaseError {
+            switch useCaseError {
+            case .noChanges:
+                return "変更なし"
+            default:
+                return "設定エラー"
+            }
         } else if let commitError = error as? CommitError {
             switch commitError {
             case .networkError:
@@ -142,6 +149,13 @@ struct ErrorStateView: View {
             default:
                 return "exclamationmark.triangle.fill"
             }
+        } else if let useCaseError = error as? CommitDataModelUseCaseError {
+            switch useCaseError {
+            case .noChanges:
+                return "checkmark.circle"
+            default:
+                return "gear.badge.xmark"
+            }
         } else if error is GitHubTokenError {
             return "key.slash"
         } else if error is GitError {
@@ -165,6 +179,13 @@ struct ErrorStateView: View {
             return .orange
         } else if error is GitHubTokenError {
             return .orange
+        } else if let useCaseError = error as? CommitDataModelUseCaseError {
+            switch useCaseError {
+            case .noChanges:
+                return .green  // 変更なしは実質的には「問題なし」
+            default:
+                return .orange
+            }
         } else if let commitError = error as? CommitError {
             switch commitError {
             case .networkError:
