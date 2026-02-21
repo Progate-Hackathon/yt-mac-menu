@@ -72,15 +72,6 @@ struct SettingsView: View {
         .animation(.default, value: basicSettingsAreSet)
         .frame(width: 480)
         .background(.ultraThinMaterial)
-        .background(Color.black.opacity(0.1))
-        .background(WindowAccessor { window in
-            guard let window = window else { return }
-            window.isOpaque = false
-            window.backgroundColor = .clear
-            window.titlebarAppearsTransparent = true
-            window.collectionBehavior = [.moveToActiveSpace]
-            settingsWindow = window
-        })
         .onAppear {
             NSApp.activate(ignoringOtherApps: true)
             DispatchQueue.main.async {
