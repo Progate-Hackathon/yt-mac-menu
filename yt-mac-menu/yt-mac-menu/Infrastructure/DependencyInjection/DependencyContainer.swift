@@ -62,12 +62,16 @@ class DependencyContainer {
         return FetchBranchesUseCase(gitRepository: gitRepository)
     }
     
+    func makeExecuteGestureActionUseCase() -> ExecuteGestureActionUseCase {
+        return ExecuteGestureActionUseCase(sendCommitDataUseCase: makeSendCommitDataUseCase())
+    }
+    
     // MARK: - Presentation Layer
     
     private(set) lazy var appCoordinator: AppCoordinator = {
         return AppCoordinator(
             gestureRepository: gestureRepository,
-            sendCommitDataUseCase: makeSendCommitDataUseCase(),
+            executeActionUseCase: makeExecuteGestureActionUseCase(),
             cameraManagementUseCase: makeCameraManagementUseCase()
         )
     }()

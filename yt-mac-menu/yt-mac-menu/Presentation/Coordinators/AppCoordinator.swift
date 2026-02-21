@@ -7,7 +7,7 @@ class AppCoordinator: ObservableObject {
     @Published var commandResult: ShellResult? = nil
     
     private let gestureRepository: GestureRepositoryProtocol
-    private let sendCommitDataUseCase: SendCommitDataUseCase
+    private let executeActionUseCase: ExecuteGestureActionUseCase
     private let cameraManagementUseCase: CameraManagementUseCase
     private let globalHotkeyService = GlobalHotkeyService()
     private var cancellables = Set<AnyCancellable>()
@@ -16,11 +16,11 @@ class AppCoordinator: ObservableObject {
     
     init(
         gestureRepository: GestureRepositoryProtocol,
-        sendCommitDataUseCase: SendCommitDataUseCase,
+        executeActionUseCase: ExecuteGestureActionUseCase,
         cameraManagementUseCase: CameraManagementUseCase
     ) {
         self.gestureRepository = gestureRepository
-        self.sendCommitDataUseCase = sendCommitDataUseCase
+        self.executeActionUseCase = executeActionUseCase
         self.cameraManagementUseCase = cameraManagementUseCase
         setupBindings()
     }
@@ -222,23 +222,19 @@ class AppCoordinator: ObservableObject {
             print("AppCoordinator: ハート検出されましたが、状態が不正です (\(currentState.description))")
             return
         }
+        
+        print("AppCoordinator: ハート検出")
+        gestureRepository.sendCommand(.disableGesture)
+        transition(to: .heartDetected)
+        
         Task {
-            // アクションタイプを取得
-            let actionType = UserDefaultsManager.shared.get(key: .actionType, type: ActionType.self) ?? .commit
-            
-            print("AppCoordinator: ハート検出 → アクション実行 (\(actionType.displayName))")
-            transition(to: .heartDetected)
-            gestureRepository.sendCommand(.disableGesture)
-            
-            // アクションタイプに応じて処理を分岐
-            switch actionType {
-            case .commit:
-                await sendCommitData()
-            case .shortcut:
-                executeShortcut()
-            case .command:
-                await executeCommand()
-            }
+            let config = ExecuteGestureActionUseCase.ActionConfig(
+                hotkeyKey: .hotkeyConfig,
+                commandKey: .commandString,
+                actionTypeKey: .actionType
+            )
+            let result = await executeActionUseCase.executeAction(config: config)
+            await handleActionResult(result)
         }
     }
     
@@ -249,60 +245,17 @@ class AppCoordinator: ObservableObject {
         }
         
         print("AppCoordinator: サムズアップ検出")
-        
-        // Read action type from UserDefaults
-        let actionType = UserDefaultsManager.shared.get(key: .thumbsUpActionType, type: ActionType.self) ?? .command
-        
         gestureRepository.sendCommand(.disableGesture)
         transition(to: .thumbsUpDetected)
         
-        // Execute appropriate action based on saved type
-        switch actionType {
-        case .commit:
-            // TODO: Implement commit action for thumbs up
-            print("AppCoordinator: サムズアップでコミット実行（未実装）")
-            transition(to: .resetting)
-            isCameraVisible = false
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                self?.transition(to: .idle)
-            }
-            
-        case .shortcut:
-            if let hotkey = UserDefaultsManager.shared.get(key: .thumbsUpHotkeyConfig, type: Hotkey.self) {
-                print("AppCoordinator: サムズアップでショートカット実行 - \(hotkey.displayString)")
-                KeySender.activatePreviousAppAndSimulateShortcut(
-                    keyCode: hotkey.keyCode,
-                    modifiers: hotkey.modifiers
-                )
-                transition(to: .shortcutSuccess)
-            }
-            
-            isCameraVisible = false
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
-                self?.transition(to: .resetting)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                    self?.transition(to: .idle)
-                }
-            }
-            
-        case .command:
-            if let command = UserDefaultsManager.shared.get(key: .thumbsUpCommandString, type: String.self), !command.isEmpty {
-                print("AppCoordinator: サムズアップでコマンド実行 - \(command)")
-                Task {
-                    let result = await ShellExecutor.execute(command: command)
-                    await MainActor.run {
-                        self.commandResult = result
-                    }
-                }
-            }
-            
-            isCameraVisible = false
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
-                self?.transition(to: .resetting)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                    self?.transition(to: .idle)
-                }
-            }
+        Task {
+            let config = ExecuteGestureActionUseCase.ActionConfig(
+                hotkeyKey: .thumbsUpHotkeyConfig,
+                commandKey: .thumbsUpCommandString,
+                actionTypeKey: .thumbsUpActionType
+            )
+            let result = await executeActionUseCase.executeAction(config: config)
+            await handleActionResult(result)
         }
     }
     
@@ -313,123 +266,45 @@ class AppCoordinator: ObservableObject {
         }
         
         print("AppCoordinator: ピース検出")
-        
-        // Read action type from UserDefaults
-        let actionType = UserDefaultsManager.shared.get(key: .peaceActionType, type: ActionType.self) ?? .shortcut
-        
         gestureRepository.sendCommand(.disableGesture)
         transition(to: .peaceDetected)
         
-        // Execute appropriate action based on saved type
-        switch actionType {
-        case .commit:
-            // TODO: Implement commit action for peace
-            print("AppCoordinator: ピースでコミット実行（未実装）")
-            transition(to: .resetting)
-            isCameraVisible = false
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                self?.transition(to: .idle)
-            }
-            
-        case .shortcut:
-            if let hotkey = UserDefaultsManager.shared.get(key: .peaceHotkeyConfig, type: Hotkey.self) {
-                print("AppCoordinator: ピースでショートカット実行 - \(hotkey.displayString)")
-                KeySender.activatePreviousAppAndSimulateShortcut(
-                    keyCode: hotkey.keyCode,
-                    modifiers: hotkey.modifiers
-                )
-                transition(to: .shortcutSuccess)
-            }
-            
-            isCameraVisible = false
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
-                self?.transition(to: .resetting)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                    self?.transition(to: .idle)
-                }
-            }
-            
-        case .command:
-            if let command = UserDefaultsManager.shared.get(key: .peaceCommandString, type: String.self), !command.isEmpty {
-                print("AppCoordinator: ピースでコマンド実行 - \(command)")
-                Task {
-                    let result = await ShellExecutor.execute(command: command)
-                    await MainActor.run {
-                        self.commandResult = result
-                    }
-                }
-            }
-            
-            isCameraVisible = false
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
-                self?.transition(to: .resetting)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                    self?.transition(to: .idle)
-                }
-            }
+        Task {
+            let config = ExecuteGestureActionUseCase.ActionConfig(
+                hotkeyKey: .peaceHotkeyConfig,
+                commandKey: .peaceCommandString,
+                actionTypeKey: .peaceActionType
+            )
+            let result = await executeActionUseCase.executeAction(config: config)
+            await handleActionResult(result)
         }
     }
     
-    private func executeShortcut() {
-        guard let hotkey = UserDefaultsManager.shared.get(key: .hotkeyConfig, type: Hotkey.self) else {
-            print("AppCoordinator: ホットキーが設定されていません")
-            transition(to: .shortcutSuccess)
-            scheduleReset()
-            return
-        }
-
-        print("AppCoordinator: ショートカット実行 - \(hotkey.displayString)")
-        KeySender.activatePreviousAppAndSimulateShortcut(keyCode: hotkey.keyCode, modifiers: hotkey.modifiers)
-
-        transition(to: .shortcutSuccess)
-        scheduleReset()
-    }
-
-    private func executeCommand() async {
-        guard let command = UserDefaultsManager.shared.get(key: .commandString, type: String.self),
-              !command.isEmpty else {
-            print("AppCoordinator: コマンドが設定されていません")
-            await MainActor.run {
-                self.commandResult = ShellResult(stdout: "", stderr: "コマンドが設定されていません。設定画面から入力してください。", exitCode: -1)
-                self.transition(to: .commitError(NSError(domain: "AppCoordinator", code: -1,
-                    userInfo: [NSLocalizedDescriptionKey: "コマンドが設定されていません"])))
-            }
-            return
-        }
-        print("AppCoordinator: コマンド実行 - \(command)")
-        transition(to: .committingData)
-        let result = await ShellExecutor.execute(command: command)
+    private func handleActionResult(_ result: ExecuteGestureActionUseCase.ActionResult) async {
         await MainActor.run {
-            self.commandResult = result
-            if result.isSuccess {
+            switch result {
+            case .commitSuccess:
+                print("AppCoordinator: コミット成功")
                 self.transition(to: .commitSuccess)
-            } else {
-                self.transition(to: .commitError(NSError(domain: "ShellExecutor", code: Int(result.exitCode),
-                    userInfo: [NSLocalizedDescriptionKey: result.stderr.isEmpty ? "コマンドが失敗しました (exit \(result.exitCode))" : result.stderr])))
+                self.scheduleReset()
+                
+            case .shortcutSuccess:
+                print("AppCoordinator: ショートカット成功")
+                self.transition(to: .shortcutSuccess)
+                self.scheduleReset()
+                
+            case .commandSuccess(let shellResult):
+                print("AppCoordinator: コマンド成功")
+                self.commandResult = shellResult
+                self.transition(to: .commitSuccess)
+                self.scheduleReset()
+                
+            case .error(let error):
+                print("AppCoordinator: アクション失敗 - \(error.localizedDescription)")
+                self.transition(to: .commitError(error))
+                // エラー時はリセットをスケジュールしない - ユーザーが手動でウィンドウを閉じる必要がある
             }
         }
-    }
-
-    private func sendCommitData() async {
-        transition(to: .committingData)
-        do {
-            try await sendCommitDataUseCase.sendCommitData()
-            await MainActor.run { self.handleCommitSuccess() }
-        } catch {
-            await MainActor.run { self.handleCommitError(error) }
-        }
-    }
-    
-    private func handleCommitSuccess() {
-        print("AppCoordinator: コミット成功")
-        transition(to: .commitSuccess)
-        scheduleReset()
-    }
-    
-    private func handleCommitError(_ error: Error) {
-        print("AppCoordinator: コミット失敗 - \(error.localizedDescription)")
-        transition(to: .commitError(error))
-        // エラー時はリセットをスケジュールしない - ユーザーが手動でウィンドウを閉じる必要がある
     }
     
     private func scheduleReset() {
