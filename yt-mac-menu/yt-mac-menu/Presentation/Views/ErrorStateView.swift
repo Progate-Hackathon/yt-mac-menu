@@ -112,7 +112,9 @@ struct ErrorStateView: View {
     // MARK: - Computed Properties
     
     private var errorTitle: String {
-        if error is GitHubTokenError {
+        if error is ActionError {
+            return "権限エラー"
+        } else if error is GitHubTokenError {
             return "認証エラー"
         } else if error is GitError {
             return "Git操作エラー"
@@ -131,7 +133,16 @@ struct ErrorStateView: View {
     }
     
     private var errorIcon: String {
-        if error is GitHubTokenError {
+        if let actionError = error as? ActionError {
+            switch actionError {
+            case .accessibilityPermissionDenied:
+                return "hand.raised.slash.fill"
+            case .cameraPermissionDenied:
+                return "video.slash.fill"
+            default:
+                return "exclamationmark.triangle.fill"
+            }
+        } else if error is GitHubTokenError {
             return "key.slash"
         } else if error is GitError {
             return "arrow.triangle.branch"
@@ -150,7 +161,9 @@ struct ErrorStateView: View {
     }
     
     private var errorColor: Color {
-        if error is GitHubTokenError {
+        if error is ActionError {
+            return .orange
+        } else if error is GitHubTokenError {
             return .orange
         } else if let commitError = error as? CommitError {
             switch commitError {
@@ -174,7 +187,24 @@ struct ErrorStateView: View {
     
     @ViewBuilder
     private var primaryActionButton: some View {
-        if error is GitHubTokenError {
+        if let actionError = error as? ActionError, let settingsURL = actionError.systemSettingsURL {
+            Button(action: {
+                NSWorkspace.shared.open(settingsURL)
+            }) {
+                HStack {
+                    Image(systemName: "gear")
+                    Text("システム設定を開く")
+                }
+                .font(.body)
+                .fontWeight(.semibold)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(Color.blue)
+                .foregroundColor(.white)
+                .cornerRadius(10)
+            }
+            .buttonStyle(.plain)
+        } else if error is GitHubTokenError {
             Button(action: {
                 // 設定画面を開く
                 if let url = URL(string: "x-apple.systempreferences:com.apple.preference") {

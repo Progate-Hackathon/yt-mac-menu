@@ -215,9 +215,19 @@ class AppCoordinator: ObservableObject {
                 self.cameraManagementUseCase.setupCamera()
                 self.openCameraWindow()
             } else {
-                print("AppCoordinator: カメラ権限が拒否されました → ショートカット待機に戻ります")
-                self.transition(to: .idle)
+                print("AppCoordinator: カメラ権限が拒否されました → 権限ガイドUIを表示")
+                // ウィンドウを開いて権限ガイドUIを表示（カメラはセットアップしない）
+                self.openCameraWindowWithoutCamera()
             }
+        }
+    }
+    
+    private func openCameraWindowWithoutCamera() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            print("AppCoordinator: 権限なしでウィンドウを開く（ガイドUI表示）")
+            self.isCameraVisible = true
+            FloatingWindowController.shared.open()
         }
     }
     
