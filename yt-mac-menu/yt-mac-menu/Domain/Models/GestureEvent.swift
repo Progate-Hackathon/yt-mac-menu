@@ -6,6 +6,10 @@ enum GestureEvent {
     case gestureDetected(GestureType)
     case gestureLost(GestureType)
     
+    // Snap calibration events
+    case snapCalibrationProgress(collected: Int, target: Int)
+    case snapCalibrationCompleted
+    
     // System events
     case handCount(Int)
     case connected
@@ -17,6 +21,7 @@ enum EventType: String, Decodable {
     case gesture
     case gestureLost = "gesture_lost"
     case handCount = "hand_count"
+    case snapCalibration = "snap_calibration"
 }
 
 enum AudioType: String, Decodable {
