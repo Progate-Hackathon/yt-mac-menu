@@ -137,9 +137,10 @@ class GestureCameraViewModel: ObservableObject {
 
     private func handleStateChange(_ state: GestureCameraViewState) {
         switch state {
-        case .detectingGesture:
+        case .detectingGesture, .gestureDetected:
+            // カメラはカウントダウン中も継続（ユーザーが自分の手を見れるように）
             cameraUseCase.startCamera()
-        case .commitSuccess, .shortcutSuccess, .error, .commandResult, .committingData, .gestureDetected, .executingAction:
+        case .executingAction, .commitSuccess, .shortcutSuccess, .error, .commandResult, .committingData:
             cameraUseCase.stopCamera()
         case .waitingSnap, .unauthorized:
             break
