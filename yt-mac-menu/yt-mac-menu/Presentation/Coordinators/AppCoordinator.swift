@@ -1,10 +1,22 @@
 import Foundation
 import Combine
 
+// MARK: - Gesture Countdown Model
+
+struct GestureCountdown {
+    let gestureType: GestureType
+    let secondsRemaining: Int
+}
+
+// MARK: - App Coordinator
+
 class AppCoordinator: ObservableObject {
     @Published private(set) var currentState: AppState = .idle
     @Published private(set) var isCameraVisible: Bool = false
     @Published var commandResult: ShellResult? = nil
+    
+    // カウントダウン状態（タイマーオーバーレイ用）
+    @Published private(set) var activeCountdown: GestureCountdown?
     
     private let gestureRepository: GestureRepositoryProtocol
     private let executeActionUseCase: ExecuteGestureActionUseCase
@@ -13,6 +25,10 @@ class AppCoordinator: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var resetWorkItem: DispatchWorkItem?
     private var isRequestingCameraPermission = false
+    
+    // Countdown timer properties
+    private var countdownTimer: Timer?
+    private var currentGestureType: GestureType?
     
     init(
         gestureRepository: GestureRepositoryProtocol,
@@ -47,6 +63,7 @@ class AppCoordinator: ObservableObject {
         // ウィンドウが閉じたときの処理
         print("AppCoordinator: ウィンドウが閉じられました（現在の状態: \(currentState.description)）")
         
+        cancelCountdown()
         resetWorkItem?.cancel()
         isRequestingCameraPermission = false
         commandResult = nil
@@ -56,8 +73,8 @@ class AppCoordinator: ObservableObject {
         cameraManagementUseCase.stopCamera()
         
         switch currentState {
-            case .detectingGesture, .thumbsUpDetected, .peaceDetected, .heartDetected, .committingData, .commitSuccess, .commitError, .shortcutSuccess:
-            // ハート検出中、処理中、またはエラー状態から閉じる場合は、スナップ待機モードに戻る
+            case .detectingGesture, .gestureDetected, .executingAction, .committingData, .commitSuccess, .commitError, .shortcutSuccess:
+            // ジェスチャー検出中、処理中、またはエラー状態から閉じる場合は、スナップ待機モードに戻る
             print("AppCoordinator: スナップ待機モードへリセット")
             
             // カメラ停止完了を待ってからウィンドウを閉じる
@@ -114,12 +131,10 @@ class AppCoordinator: ObservableObject {
             handleDisconnected()
         case .audioDetected(.snap):
             handleSnapDetected()
-        case .gestureDetected(.heart):
-            handleHeartDetected()
-        case .gestureDetected(.thumbsUp):
-            handleThumbsUpDetected()
-        case .gestureDetected(.peace):
-            handlePeaceDetected()
+        case .gestureDetected(let gestureType):
+            handleGestureDetected(gestureType)
+        case .gestureLost(let gestureType):
+            handleGestureLost(gestureType)
         case .handCount:
             break
         }
@@ -217,66 +232,97 @@ class AppCoordinator: ObservableObject {
         }
     }
     
-    private func handleHeartDetected() {
+    private func handleGestureDetected(_ gestureType: GestureType) {
         guard currentState == .detectingGesture else {
-            print("AppCoordinator: ハート検出されましたが、状態が不正です (\(currentState.description))")
+            print("AppCoordinator: \(gestureType.displayName)検出されましたが、状態が不正です (\(currentState.description))")
             return
         }
         
-        print("AppCoordinator: ハート検出")
+        // 同じジェスチャーのカウントダウン中は無視（連続イベント対策）
+        if let current = activeCountdown, current.gestureType == gestureType {
+            return
+        }
+        
+        print("AppCoordinator: \(gestureType.displayName)検出 - カウントダウン開始（ジェスチャー検出は継続）")
+        startCountdown(for: gestureType)
+    }
+    
+    private func startCountdown(for gestureType: GestureType) {
+        // Cancel any existing countdown
+        cancelCountdown()
+        
+        currentGestureType = gestureType
+        var countdown = 3
+        // 状態遷移なし - オーバーレイで表示
+        activeCountdown = GestureCountdown(gestureType: gestureType, secondsRemaining: countdown)
+        
+        countdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
+            guard let self = self else {
+                timer.invalidate()
+                return
+            }
+            
+            countdown -= 1
+            
+            if countdown > 0 {
+                self.activeCountdown = GestureCountdown(gestureType: gestureType, secondsRemaining: countdown)
+            } else {
+                timer.invalidate()
+                self.countdownTimer = nil
+                self.activeCountdown = nil
+                self.executeActionForGesture(gestureType)
+            }
+        }
+    }
+    
+    private func handleGestureLost(_ gestureType: GestureType) {
+        // カウントダウン中のみキャンセル
+        guard activeCountdown != nil else { return }
+        
+        print("AppCoordinator: ジェスチャーロスト - カウントダウンをキャンセル（カメラと検出は継続）")
+        cancelCountdown()
+        // 状態遷移なし・カメラ継続・検出継続
+    }
+    
+    private func cancelCountdown() {
+        countdownTimer?.invalidate()
+        countdownTimer = nil
+        currentGestureType = nil
+        activeCountdown = nil
+    }
+    
+    private func executeActionForGesture(_ gestureType: GestureType) {
+        print("AppCoordinator: カウントダウン完了 - アクション実行開始")
         gestureRepository.sendCommand(.disableGesture)
-        transition(to: .heartDetected)
+        transition(to: .executingAction)
         
         Task {
-            let config = ExecuteGestureActionUseCase.ActionConfig(
+            let config = getConfigForGesture(gestureType)
+            let result = await executeActionUseCase.executeAction(config: config)
+            await handleActionResult(result)
+        }
+    }
+    
+    private func getConfigForGesture(_ gestureType: GestureType) -> ExecuteGestureActionUseCase.ActionConfig {
+        switch gestureType {
+        case .heart:
+            return ExecuteGestureActionUseCase.ActionConfig(
                 hotkeyKey: .hotkeyConfig,
                 commandKey: .commandString,
                 actionTypeKey: .actionType
             )
-            let result = await executeActionUseCase.executeAction(config: config)
-            await handleActionResult(result)
-        }
-    }
-    
-    private func handleThumbsUpDetected() {
-        guard currentState == .detectingGesture else {
-            print("AppCoordinator: サムズアップ検出されましたが、状態が不正です (\(currentState.description))")
-            return
-        }
-        
-        print("AppCoordinator: サムズアップ検出")
-        gestureRepository.sendCommand(.disableGesture)
-        transition(to: .thumbsUpDetected)
-        
-        Task {
-            let config = ExecuteGestureActionUseCase.ActionConfig(
+        case .thumbsUp:
+            return ExecuteGestureActionUseCase.ActionConfig(
                 hotkeyKey: .thumbsUpHotkeyConfig,
                 commandKey: .thumbsUpCommandString,
                 actionTypeKey: .thumbsUpActionType
             )
-            let result = await executeActionUseCase.executeAction(config: config)
-            await handleActionResult(result)
-        }
-    }
-    
-    private func handlePeaceDetected() {
-        guard currentState == .detectingGesture else {
-            print("AppCoordinator: ピース検出されましたが、状態が不正です (\(currentState.description))")
-            return
-        }
-        
-        print("AppCoordinator: ピース検出")
-        gestureRepository.sendCommand(.disableGesture)
-        transition(to: .peaceDetected)
-        
-        Task {
-            let config = ExecuteGestureActionUseCase.ActionConfig(
+        case .peace:
+            return ExecuteGestureActionUseCase.ActionConfig(
                 hotkeyKey: .peaceHotkeyConfig,
                 commandKey: .peaceCommandString,
                 actionTypeKey: .peaceActionType
             )
-            let result = await executeActionUseCase.executeAction(config: config)
-            await handleActionResult(result)
         }
     }
     

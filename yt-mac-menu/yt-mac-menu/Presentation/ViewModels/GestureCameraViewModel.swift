@@ -19,6 +19,7 @@ class GestureCameraViewModel: ObservableObject {
     }
 
     @Published var detectedHandCount: Int = 0
+    @Published var currentCountdown: GestureCountdown?
     
     let cameraUseCase: CameraManagementUseCase
     
@@ -28,29 +29,48 @@ class GestureCameraViewModel: ObservableObject {
     
     private let gestureUseCase: GestureDetectionUseCase
     private var cancellables = Set<AnyCancellable>()
+    private var isCameraRunning = false  // カメラ状態を追跡
     
     enum GestureCameraViewState: Equatable {
         case waitingSnap
         case detectingGesture
         case committingData
-        case heartDetected
+        case gestureDetected(GestureType, countdown: Int)
+        case executingAction
         case unauthorized
         case commitSuccess
-        case thumbsUpDetected
-        case peaceDetected
         case shortcutSuccess
         case commandResult(ShellResult)
         case error(Error)
+        
+        var stateDescription: String {
+            switch self {
+            case .waitingSnap: return "waitingSnap"
+            case .detectingGesture: return "detectingGesture"
+            case .committingData: return "committingData"
+            case .gestureDetected(let type, let countdown): return "gestureDetected(\(type.displayName), \(countdown))"
+            case .executingAction: return "executingAction"
+            case .unauthorized: return "unauthorized"
+            case .commitSuccess: return "commitSuccess"
+            case .shortcutSuccess: return "shortcutSuccess"
+            case .commandResult: return "commandResult"
+            case .error: return "error"
+            }
+        }
         
         static func == (lhs: GestureCameraViewState, rhs: GestureCameraViewState) -> Bool {
             switch (lhs, rhs) {
             case (.waitingSnap, .waitingSnap),
                  (.detectingGesture, .detectingGesture),
+                 (.committingData, .committingData),
+                 (.executingAction, .executingAction),
                  (.commitSuccess, .commitSuccess),
                  (.unauthorized, .unauthorized),
                  (.commandResult, .commandResult),
                  (.shortcutSuccess, .shortcutSuccess):
                 return true
+            case (.gestureDetected(let lhsGesture, let lhsCountdown), .gestureDetected(let rhsGesture, let rhsCountdown)):
+                return lhsGesture == rhsGesture && lhsCountdown == rhsCountdown
             case (.error(let lhsError), .error(let rhsError)):
                 return lhsError.localizedDescription == rhsError.localizedDescription
             default:
@@ -94,6 +114,14 @@ class GestureCameraViewModel: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+        
+        // カウントダウン状態を監視
+        coordinator.$activeCountdown
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] countdown in
+                self?.currentCountdown = countdown
+            }
+            .store(in: &cancellables)
     }
     
     private func updateAppStatus(from coordinatorState: AppState) {
@@ -103,6 +131,10 @@ class GestureCameraViewModel: ObservableObject {
         switch coordinatorState {
             case .detectingGesture:
                 gestureCameraViewState = .detectingGesture
+            case .gestureDetected(let gestureType, let countdown):
+                gestureCameraViewState = .gestureDetected(gestureType, countdown: countdown)
+            case .executingAction:
+                gestureCameraViewState = .executingAction
             case .commitSuccess:
                 gestureCameraViewState = .commitSuccess
             case .commitError(let error):
@@ -111,12 +143,6 @@ class GestureCameraViewModel: ObservableObject {
                 gestureCameraViewState = .shortcutSuccess
             case .committingData:
                 gestureCameraViewState = .committingData
-            case .heartDetected:
-                gestureCameraViewState = .heartDetected
-            case .peaceDetected:
-                gestureCameraViewState = .peaceDetected
-            case .thumbsUpDetected:
-                gestureCameraViewState = .thumbsUpDetected
             case .idle, .listeningForSnap, .resetting, .snapDetected:
                 break
         }
@@ -139,11 +165,27 @@ class GestureCameraViewModel: ObservableObject {
     
 
     private func handleStateChange(_ state: GestureCameraViewState) {
+        print("🎥 handleStateChange: \(state.stateDescription), isCameraRunning: \(isCameraRunning)")
+        
         switch state {
-        case .detectingGesture:
-            cameraUseCase.startCamera()
-        case .commitSuccess, .shortcutSuccess, .error, .commandResult, .committingData, .heartDetected, .thumbsUpDetected, .peaceDetected:
-            cameraUseCase.stopCamera()
+        case .detectingGesture, .gestureDetected:
+            // カメラはカウントダウン中も継続（ユーザーが自分の手を見れるように）
+            // 既に起動中の場合は再起動しない（AVCaptureSessionエラー回避）
+            if !isCameraRunning {
+                print("📹 カメラを起動します (was off)")
+                cameraUseCase.startCamera()
+                isCameraRunning = true
+            } else {
+                print("📹 カメラは既に起動中 (no action)")
+            }
+        case .executingAction, .commitSuccess, .shortcutSuccess, .error, .commandResult, .committingData:
+            if isCameraRunning {
+                print("📹 カメラを停止します (was on)")
+                cameraUseCase.stopCamera()
+                isCameraRunning = false
+            } else {
+                print("📹 カメラは既に停止中 (no action)")
+            }
         case .waitingSnap, .unauthorized:
             break
         }
@@ -167,28 +209,20 @@ class GestureCameraViewModel: ObservableObject {
 extension GestureCameraViewModel.GestureCameraViewState {
     var feedbackRepresentation: ViewStateRepresentation? {
         switch self {
-        case .heartDetected:
+        case .gestureDetected(let gestureType, let countdown):
             return ViewStateRepresentation(
-                title: "ハート検出！",
-                subtitle: "コミット中...",
-                iconName: "heart.fill",
-                color: .pink
-            )
-            
-        case .thumbsUpDetected:
-            return ViewStateRepresentation(
-                title: "サムズアップ検出！",
-                subtitle: "処理中...",
-                iconName: "hand.thumbsup.fill",
+                title: "\(gestureType.emoji) \(gestureType.displayName)検出",
+                subtitle: "\(countdown)秒後にアクションを実行します",
+                iconName: "timer",
                 color: .blue
             )
             
-        case .peaceDetected:
+        case .executingAction:
             return ViewStateRepresentation(
-                title: "ピース検出！",
-                subtitle: "処理中...",
-                iconName: "hand.raised.fingers.spread.fill",
-                color: .purple
+                title: "アクション実行中...",
+                subtitle: "お待ちください",
+                iconName: "gearshape.2",
+                color: .orange
             )
             
         case .committingData:

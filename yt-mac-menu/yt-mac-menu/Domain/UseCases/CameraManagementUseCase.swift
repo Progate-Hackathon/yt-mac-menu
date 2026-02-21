@@ -59,8 +59,9 @@ class CameraManagementUseCase {
             guard let self = self else { return }
             
             // 既に入力がある場合はスキップ（重複追加を防ぐ）
-            if !self.session.inputs.isEmpty {
-                print("CameraManagementUseCase: setupCamera() - inputs already exist, skipping")
+            // NOTE: セッションが実行中の場合も設定をスキップ（AVCaptureSessionエラー回避）
+            if !self.session.inputs.isEmpty || self.session.isRunning {
+                print("CameraManagementUseCase: setupCamera() - inputs exist or session running, skipping")
                 return
             }
             

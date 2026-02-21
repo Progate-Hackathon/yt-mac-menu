@@ -95,6 +95,19 @@ class RemoteGestureDataSource {
                 print("⚠️ Unknown gesture type: \(typeString)")
             }
             
+        case .gestureLost:
+            guard let typeString = decoded.type else {
+                print("⚠️ gesture_lost event missing type field")
+                return
+            }
+            
+            if let gestureType = GestureType(rawValue: typeString) {
+                print("🚫 Gesture lost: \(typeString)")
+                eventSubject.send(.gestureLost(gestureType))
+            } else {
+                print("⚠️ gesture_lost with invalid type: \(typeString)")
+            }
+            
         case .handCount:
             print("✅ 手の数受信: \(decoded.count ?? -1)")
             if let count = decoded.count {
