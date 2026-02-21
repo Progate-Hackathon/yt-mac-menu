@@ -1,136 +1,195 @@
 import SwiftUI
 
 struct GestureActionSection: View {
-    let gestureName: String
-    let gestureEmoji: String
+    let gestureType: GestureType
+    @ObservedObject var viewModel: ShortcutViewModel
     
-    @Binding var actionType: ActionType
-    @Binding var hotkey: Hotkey
-    @Binding var commandString: String
-    @Binding var showRecorderPopover: Bool
-    @Binding var showSuccess: Bool
-    @Binding var tempModifiers: NSEvent.ModifierFlags
-    @Binding var tempKeyDisplay: String
+    @State private var activePopoverIndex: Int? = nil
     
-    let onActionTypeChange: (ActionType) -> Void
-    let onSaveCommand: () -> Void
-    let onStartRecording: () -> Void
-    let onStopRecording: () -> Void
-    let onTestShortcut: () -> Void
+    private var actions: [GestureAction] {
+        viewModel.actions(for: gestureType)
+    }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Action type picker
+        VStack(alignment: .leading, spacing: 12) {
+            // Header
             HStack {
-                Text("\(gestureEmoji) \(gestureName)")
+                Text("\(gestureType.emoji) \(gestureType.displayName)検出時のアクション")
                     .font(.headline)
-                    .frame(width: 200, alignment: .leading)
-
-                Picker("", selection: $actionType) {
-                    ForEach(ActionType.allCases, id: \.self) { type in
-                        Text(type.displayName).tag(type)
+                
+                Spacer()
+                
+                // Add action button
+                if actions.count < GestureAction.maxActionsPerGesture {
+                    Button(action: { viewModel.addAction(for: gestureType) }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus.circle.fill")
+                            Text("追加")
+                        }
+                        .font(.system(size: 12, weight: .medium))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundColor(.blue)
+                }
+            }
+            
+            if actions.isEmpty {
+                Text("アクションが設定されていません")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 8)
+            } else {
+                // Action list
+                ForEach(Array(actions.enumerated()), id: \.element.id) { index, action in
+                    ActionRowView(
+                        index: index,
+                        action: action,
+                        gestureType: gestureType,
+                        viewModel: viewModel,
+                        isPopoverPresented: Binding(
+                            get: { activePopoverIndex == index },
+                            set: { if $0 { activePopoverIndex = index } else { activePopoverIndex = nil } }
+                        )
+                    )
+                    
+                    if index < actions.count - 1 {
+                        Divider()
+                            .padding(.leading, 24)
                     }
                 }
-                .pickerStyle(.menu)
-                .labelsHidden()
-                .frame(width: 200)
-                .onChange(of: actionType) { _, newValue in
-                    onActionTypeChange(newValue)
+            }
+        }
+    }
+}
+
+// MARK: - Action Row View
+
+private struct ActionRowView: View {
+    let index: Int
+    let action: GestureAction
+    let gestureType: GestureType
+    @ObservedObject var viewModel: ShortcutViewModel
+    @Binding var isPopoverPresented: Bool
+    
+    @State private var localCommand: String = ""
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            // Index badge
+            Text("\(index + 1)")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.secondary)
+                .frame(width: 20, height: 20)
+                .background(Circle().fill(Color.secondary.opacity(0.2)))
+            
+            VStack(alignment: .leading, spacing: 8) {
+                // Action type picker
+                HStack {
+                    Picker("", selection: Binding(
+                        get: { action.actionType },
+                        set: { viewModel.updateActionType($0, at: index, for: gestureType) }
+                    )) {
+                        ForEach(ActionType.allCases, id: \.self) { type in
+                            Text(type.displayName).tag(type)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .frame(width: 140)
+                    
+                    Spacer()
+                    
+                    // Delete button
+                    Button(action: { viewModel.removeAction(at: index, for: gestureType) }) {
+                        Image(systemName: "trash")
+                            .font(.system(size: 12))
+                            .foregroundColor(.red.opacity(0.8))
+                    }
+                    .buttonStyle(.plain)
+                }
+                
+                // Conditional config based on action type
+                switch action.actionType {
+                case .shortcut:
+                    shortcutConfig
+                case .command:
+                    commandConfig
+                case .commit:
+                    Text("変更内容をAIが要約してGitHubにコミット")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
-
-            Text(actionType.description)
+        }
+        .padding(.vertical, 4)
+        .onAppear {
+            localCommand = action.commandString ?? ""
+        }
+    }
+    
+    // MARK: - Shortcut Config
+    
+    private var shortcutConfig: some View {
+        HStack {
+            Text("キー:")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
             
-            // Conditional UI based on action type
-            if actionType == .shortcut {
-                shortcutSection
-            }
-            
-            if actionType == .command {
-                commandSection
-            }
-        }
-    }
-    
-    // MARK: - Shortcut Section
-    
-    private var shortcutSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("ショートカットキー")
-                    .font(.headline)
-                    .frame(width: 200, alignment: .leading)
-                
-                Button(action: onStartRecording) {
-                    Text(hotkey.displayString)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white)
-                        .frame(width: 200, height: 32)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(.white.opacity(0.1))
-                                .shadow(color: .black.opacity(0.2), radius: 1, x: 0, y: 1)
-                        )
-                }
-                .buttonStyle(.plain)
-                .popover(isPresented: $showRecorderPopover, arrowEdge: .top) {
-                    RecorderOverlaySectionView(
-                        showSuccess: $showSuccess,
-                        tempModifiers: $tempModifiers,
-                        tempKeyDisplay: $tempKeyDisplay,
-                        currentHotkey: $hotkey,
-                        stopRecording: onStopRecording
-                    )
-                }
-            }
-            
-            // Test button
-            HStack {
-                Text("動作確認")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.secondary)
-                
-                // Test したいときに使う
-//                Button(action: onTestShortcut) {
-//                    HStack {
-//                        Image(systemName: "play.fill")
-//                        Text("テスト実行")
-//                    }
-//                    .font(.system(size: 12, weight: .medium))
-//                    .padding(.horizontal, 10)
-//                    .padding(.vertical, 5)
-//                    .background(RoundedRectangle(cornerRadius: 6).fill(Color.blue.opacity(0.2)))
-//                }
-//                .buttonStyle(.plain)
-            }
-        }
-    }
-    
-    // MARK: - Command Section
-    
-    private var commandSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("💻 実行コマンド")
-                    .font(.headline)
-                    .frame(width: 200, alignment: .leading)
-
-                TextField("例: open -a Safari", text: $commandString)
-                    .font(.system(size: 13, weight: .medium))
-                    .textFieldStyle(.plain)
-                    .padding(.horizontal, 8)
-                    .frame(width: 200, height: 32)
+            Button(action: {
+                isPopoverPresented = true
+                viewModel.onRecordingComplete = { isPopoverPresented = false }
+                viewModel.startRecording(for: gestureType, actionIndex: index)
+            }) {
+                Text(action.hotkey?.displayString ?? "クリックして設定")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(action.hotkey == nil ? .secondary : .white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
                     .background(
-                        RoundedRectangle(cornerRadius: 6)
+                        RoundedRectangle(cornerRadius: 4)
                             .fill(.white.opacity(0.1))
-                            .shadow(color: .black.opacity(0.2), radius: 1, x: 0, y: 1)
                     )
-                    .onSubmit { onSaveCommand() }
-                    .onChange(of: commandString) { _, _ in onSaveCommand() }
             }
+            .buttonStyle(.plain)
+            .popover(isPresented: $isPopoverPresented, arrowEdge: .top) {
+                RecorderOverlaySectionView(
+                    showSuccess: $viewModel.showSuccess,
+                    tempModifiers: $viewModel.tempModifiers,
+                    tempKeyDisplay: $viewModel.tempKeyDisplay,
+                    currentHotkey: Binding(
+                        get: { action.hotkey ?? Hotkey(modifiers: [], keyCode: 0, keyDisplay: "") },
+                        set: { _ in }
+                    ),
+                    stopRecording: viewModel.stopRecording
+                )
+            }
+        }
+    }
+    
+    // MARK: - Command Config
+    
+    private var commandConfig: some View {
+        HStack {
+            Text("コマンド:")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            
+            TextField("例: open -a Safari", text: $localCommand)
+                .font(.system(size: 12))
+                .textFieldStyle(.plain)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .frame(width: 180)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(.white.opacity(0.1))
+                )
+                .onSubmit {
+                    viewModel.updateCommand(localCommand, at: index, for: gestureType)
+                }
+                .onChange(of: localCommand) { _, newValue in
+                    viewModel.updateCommand(newValue, at: index, for: gestureType)
+                }
         }
     }
 }
