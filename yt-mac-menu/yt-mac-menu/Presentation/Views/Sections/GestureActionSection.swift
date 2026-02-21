@@ -93,17 +93,18 @@ struct GestureActionSection: View {
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.secondary)
                 
-                Button(action: onTestShortcut) {
-                    HStack {
-                        Image(systemName: "play.fill")
-                        Text("テスト実行")
-                    }
-                    .font(.system(size: 12, weight: .medium))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(Color.blue.opacity(0.2)))
-                }
-                .buttonStyle(.plain)
+                // Test したいときに使う
+//                Button(action: onTestShortcut) {
+//                    HStack {
+//                        Image(systemName: "play.fill")
+//                        Text("テスト実行")
+//                    }
+//                    .font(.system(size: 12, weight: .medium))
+//                    .padding(.horizontal, 10)
+//                    .padding(.vertical, 5)
+//                    .background(RoundedRectangle(cornerRadius: 6).fill(Color.blue.opacity(0.2)))
+//                }
+//                .buttonStyle(.plain)
             }
         }
     }
