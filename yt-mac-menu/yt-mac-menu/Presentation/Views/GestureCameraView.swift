@@ -36,7 +36,7 @@ struct GestureCameraView: View {
                         
                         // カウントダウンオーバーレイ
                         if let countdown = gestureCameraViewModel.currentCountdown {
-                            CountdownOverlayView(countdown: countdown)
+                            CountdownOverlayView(countdown: countdown, totalSeconds: 3)
                                 .transition(.scale.combined(with: .opacity))
                                 .animation(.easeInOut(duration: 0.3), value: countdown.secondsRemaining)
                         }
@@ -178,28 +178,58 @@ struct CameraPreviewView: NSViewRepresentable {
 
 struct CountdownOverlayView: View {
     let countdown: GestureCountdown
+    let totalSeconds: Int   // ← 追加
+    
+    private var progress: Double {
+        Double(countdown.secondsRemaining) / Double(totalSeconds)
+    }
     
     var body: some View {
-        VStack(spacing: 12) {
-            Text(countdown.gestureType.emoji)
-                .font(.system(size: 48))
+        VStack(spacing: 20) {
             
+            ZStack {
+                
+                // 背景リング
+                Circle()
+                    .stroke(Color.white.opacity(0.2), lineWidth: 12)
+                
+                // 進捗リング（Arc）
+                Circle()
+                    .trim(from: 0, to: progress)
+                    .stroke(
+                        Color.white,
+                        style: StrokeStyle(
+                            lineWidth: 12,
+                            lineCap: .round
+                        )
+                    )
+                    .rotationEffect(.degrees(-90))
+                    .animation(.easeInOut, value: progress)
+                
+                // 中央の秒数
+                Text(countdown.gestureType.emoji)
+                    .font(.system(size: 40))
+                
+            }
+            .frame(width: 100, height: 100)
+            
+        
             Text(countdown.gestureType.displayName)
-                .font(.title2.bold())
+                .font(.title3.bold())
                 .foregroundColor(.white)
             
-            Text("\(countdown.secondsRemaining)")
-                .font(.system(size: 64, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
-            
-            Text("秒後にアクションを実行します")
+            Text("\(countdown.secondsRemaining)秒後にアクションを実行します")
                 .font(.subheadline)
                 .foregroundColor(.white.opacity(0.8))
         }
         .padding(32)
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(.black.opacity(0.6))
+                .fill(.black.opacity(0.7))
         )
     }
+}
+
+#Preview {
+    CountdownOverlayView(countdown: GestureCountdown(gestureType: .heart, secondsRemaining: 1), totalSeconds: 4)
 }
