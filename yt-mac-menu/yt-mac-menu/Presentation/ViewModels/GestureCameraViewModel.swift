@@ -42,6 +42,21 @@ class GestureCameraViewModel: ObservableObject {
         case commandResult(ShellResult)
         case error(Error)
         
+        var stateDescription: String {
+            switch self {
+            case .waitingSnap: return "waitingSnap"
+            case .detectingGesture: return "detectingGesture"
+            case .committingData: return "committingData"
+            case .gestureDetected(let type, let countdown): return "gestureDetected(\(type.displayName), \(countdown))"
+            case .executingAction: return "executingAction"
+            case .unauthorized: return "unauthorized"
+            case .commitSuccess: return "commitSuccess"
+            case .shortcutSuccess: return "shortcutSuccess"
+            case .commandResult: return "commandResult"
+            case .error: return "error"
+            }
+        }
+        
         static func == (lhs: GestureCameraViewState, rhs: GestureCameraViewState) -> Bool {
             switch (lhs, rhs) {
             case (.waitingSnap, .waitingSnap),
@@ -137,20 +152,26 @@ class GestureCameraViewModel: ObservableObject {
     
 
     private func handleStateChange(_ state: GestureCameraViewState) {
+        print("🎥 handleStateChange: \(state.stateDescription), isCameraRunning: \(isCameraRunning)")
+        
         switch state {
         case .detectingGesture, .gestureDetected:
             // カメラはカウントダウン中も継続（ユーザーが自分の手を見れるように）
             // 既に起動中の場合は再起動しない（AVCaptureSessionエラー回避）
             if !isCameraRunning {
-                print("📹 カメラを起動します")
+                print("📹 カメラを起動します (was off)")
                 cameraUseCase.startCamera()
                 isCameraRunning = true
+            } else {
+                print("📹 カメラは既に起動中 (no action)")
             }
         case .executingAction, .commitSuccess, .shortcutSuccess, .error, .commandResult, .committingData:
             if isCameraRunning {
-                print("📹 カメラを停止します")
+                print("📹 カメラを停止します (was on)")
                 cameraUseCase.stopCamera()
                 isCameraRunning = false
+            } else {
+                print("📹 カメラは既に停止中 (no action)")
             }
         case .waitingSnap, .unauthorized:
             break
