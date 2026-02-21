@@ -3,6 +3,14 @@ import Combine
 
 @MainActor
 final class ShortcutViewModel: ObservableObject {
+    
+    // MARK: - Recording Context
+    
+    enum RecordingContext {
+        case heart
+        case peace
+        case thumbsUp
+    }
 
     // MARK: - Properties
 
@@ -12,6 +20,8 @@ final class ShortcutViewModel: ObservableObject {
     @Published var showSuccess: Bool = false
     @Published var tempModifiers: NSEvent.ModifierFlags = []
     @Published var tempKeyDisplay: String = ""
+    
+    private var currentRecordingContext: RecordingContext = .heart
 
     // Peace gesture settings
     @Published var peaceActionType: ActionType
@@ -105,8 +115,9 @@ final class ShortcutViewModel: ObservableObject {
 
     // MARK: - Recorder
 
-    func startRecording() {
-        print("ShortcutViewModel: startRecording呼び出し")
+    func startRecording(for context: RecordingContext = .heart) {
+        print("ShortcutViewModel: startRecording呼び出し - context: \(context)")
+        currentRecordingContext = context
         // 排他制御：snap記録中なら止める
         if isRecordingSnapTrigger { stopRecordingSnapTrigger() }
         isRecording = true
@@ -124,12 +135,25 @@ final class ShortcutViewModel: ObservableObject {
     }
 
     private func completeRecording(modifiers: NSEvent.ModifierFlags, keyCode: UInt16, display: String) {
-        print("ShortcutViewModel: ショートカット記録完了 - \(display), keyCode: \(keyCode), modifiers: \(modifiers)")
+        print("ShortcutViewModel: ショートカット記録完了 - \(display), keyCode: \(keyCode), modifiers: \(modifiers), context: \(currentRecordingContext)")
         let newHotkey = Hotkey(modifiers: modifiers, keyCode: keyCode, keyDisplay: display)
-        print("ShortcutViewModel: 保存前のホットキー: \(currentHotkey.displayString)")
-        saveHotkey(newHotkey)
-        currentHotkey = newHotkey
-        print("ShortcutViewModel: 保存後のホットキー: \(currentHotkey.displayString)")
+        
+        // Save to appropriate storage based on recording context
+        switch currentRecordingContext {
+        case .heart:
+            print("ShortcutViewModel: ハートジェスチャーに保存")
+            saveHotkey(newHotkey)
+            currentHotkey = newHotkey
+        case .peace:
+            print("ShortcutViewModel: ピースジェスチャーに保存")
+            savePeaceHotkey(newHotkey)
+            peaceHotkey = newHotkey
+        case .thumbsUp:
+            print("ShortcutViewModel: サムズアップジェスチャーに保存")
+            saveThumbsUpHotkey(newHotkey)
+            thumbsUpHotkey = newHotkey
+        }
+        
         showSuccess = true
 
         Task { @MainActor in

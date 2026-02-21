@@ -30,7 +30,7 @@ struct ShortcutView: View {
                 onStartRecording: {
                     showRecorderPopover = true
                     viewModel.onRecordingComplete = { showRecorderPopover = false }
-                    viewModel.startRecording()
+                    viewModel.startRecording(for: .heart)
                 },
                 onStopRecording: { viewModel.stopRecording() },
                 onTestShortcut: { viewModel.runTestShortcut() }
@@ -54,7 +54,7 @@ struct ShortcutView: View {
                 onStartRecording: {
                     showPeaceRecorderPopover = true
                     viewModel.onRecordingComplete = { showPeaceRecorderPopover = false }
-                    viewModel.startRecording()
+                    viewModel.startRecording(for: .peace)
                 },
                 onStopRecording: { viewModel.stopRecording() },
                 onTestShortcut: {
@@ -83,7 +83,7 @@ struct ShortcutView: View {
                 onStartRecording: {
                     showThumbsUpRecorderPopover = true
                     viewModel.onRecordingComplete = { showThumbsUpRecorderPopover = false }
-                    viewModel.startRecording()
+                    viewModel.startRecording(for: .thumbsUp)
                 },
                 onStopRecording: { viewModel.stopRecording() },
                 onTestShortcut: {
