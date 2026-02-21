@@ -14,6 +14,7 @@ enum UserDefaultKeys: String {
     case actionType
     case baseBranch
     case shouldCreatePR
+    case snapTriggerHotkey
 }
 
 final class UserDefaultsManager {
