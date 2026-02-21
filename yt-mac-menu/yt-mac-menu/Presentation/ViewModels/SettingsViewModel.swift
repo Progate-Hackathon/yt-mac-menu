@@ -10,16 +10,25 @@ final class SettingsViewModel: ObservableObject {
     @Published var githubToken: String = ""
     @Published var baseBranch: String = ""
     @Published var shouldCreatePR: Bool = false
+    
+    // Branch fetching state
+    @Published var availableBranches: [String] = []
+    @Published var isFetchingBranches: Bool = false
+    @Published var branchFetchError: FetchBranchesUseCaseError?
 
     @Published var hasUnsavedChanges: Bool = false
     @Published var errorMessage: String?
     @Published var isSaving = false
+    @Published var settingsSaved: Bool = false  // 設定が保存されたかを追跡
+    
+    private let fetchBranchesUseCase: FetchBranchesUseCase
 
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Lifecycle
 
-    init() {
+    init(fetchBranchesUseCase: FetchBranchesUseCase) {
+        self.fetchBranchesUseCase = fetchBranchesUseCase
         loadSettings()
         observeSettingChanges()
     }
@@ -44,7 +53,43 @@ final class SettingsViewModel: ObservableObject {
 
         errorMessage = nil
         hasUnsavedChanges = false
+        settingsSaved = true  // 保存完了を通知
         print("DEBUG: Settings saved successfully")
+    }
+    
+    // MARK: - Actions (Branch Fetching)
+    
+    func fetchBranches() async {
+        isFetchingBranches = true
+        branchFetchError = nil
+        defer { isFetchingBranches = false }
+        
+        do {
+            // First, sync remote branches (git fetch --all)
+            try await syncRemoteBranches()
+            
+            // Then fetch local branches (includes synced remote branches)
+            availableBranches = try fetchBranchesUseCase.getBranches()
+            
+            // Ensure current baseBranch is in the list
+            if !baseBranch.isEmpty && !availableBranches.contains(baseBranch) {
+                availableBranches.insert(baseBranch, at: 0)
+            }
+            
+            print("DEBUG: Fetched \(availableBranches.count) branches")
+        } catch let error as FetchBranchesUseCaseError {
+            print("DEBUG: Branch fetch error: \(error.localizedDescription)")
+            branchFetchError = error
+            availableBranches = []
+        } catch {
+            print("DEBUG: Unexpected branch fetch error: \(error)")
+            availableBranches = []
+        }
+    }
+    
+    private func syncRemoteBranches() async throws {
+        // Execute: git fetch --all via UseCase
+        try fetchBranchesUseCase.fetchRemoteBranches()
     }
 }
 
@@ -68,6 +113,11 @@ private extension SettingsViewModel {
         self.selectedProjectPath = UserDefaultsManager.shared.get(key: .projectFolderPath, type: String.self) ?? ""
         self.baseBranch = UserDefaultsManager.shared.get(key: .baseBranch, type: String.self) ?? "main"
         self.shouldCreatePR = UserDefaultsManager.shared.getBool(key: .shouldCreatePR)
+        
+        // 保存済みの設定がある場合はsettingsSavedをtrueに
+        if !githubToken.isEmpty && !selectedProjectPath.isEmpty {
+            settingsSaved = true
+        }
     }
 
     // MARK: - Validation

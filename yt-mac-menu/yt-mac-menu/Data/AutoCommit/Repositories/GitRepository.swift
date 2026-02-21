@@ -9,15 +9,15 @@ import Foundation
 
 /// プロジェクトのGit情報（リポジトリ名、ブランチ名）を取得するRepositoryクラス
 class GitRepository: GitRepositoryProtocol {
+    
 
     // MARK: - Public Methods (GitRepositoryProtocol Implementation)
     
     /// リモートoriginのURLから "username/repo" 形式のリポジトリ名を取得する
     func getRepositoryName(projectPath: String) throws -> String {
         // ターミナルコマンド git config --get remote.origin.url
-        guard let remoteURL = executeGitCommand(arguments: ["config", "--get", "remote.origin.url"], at: projectPath) else {
-            throw GitError.commandFailed("Failed to get remote URL")
-        }
+        let remoteURL = try getRemoteOriginURL(projectPath: projectPath)
+
         let (repoName, _) = extractRepositoryNameAndOwnerName(from: remoteURL)
         
         guard let repoName else {
@@ -47,9 +47,7 @@ class GitRepository: GitRepositoryProtocol {
     /// リポジトリのオーナー名を取得する
     func getOwner(projectPath: String) throws -> String {
         // ターミナルコマンド git config --get remote.origin.url
-        guard let remoteURL = executeGitCommand(arguments: ["config", "--get", "remote.origin.url"], at: projectPath) else {
-            throw GitError.commandFailed("Failed to get remote URL")
-        }
+        let remoteURL = try getRemoteOriginURL(projectPath: projectPath)
 
         let (_, owner) = extractRepositoryNameAndOwnerName(from: remoteURL)
         
@@ -68,6 +66,40 @@ class GitRepository: GitRepositoryProtocol {
         return output.split(separator: "\n").map(String.init)
     }
     
+    
+    func getBranches(projectPath: String) throws -> [String] {
+        guard let output = executeGitCommand(
+            arguments: ["branch", "--format=%(refname:short)"],
+            at: projectPath
+        ) else {
+            throw GitError.commandFailed("結果の取得に失敗")
+        }
+
+        let branches = output
+            .split(separator: "\n")
+            .map { String($0).trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+
+        return branches
+    }
+
+    func fetchRemoteBranches(projectPath: String) throws {
+        guard let _ = executeGitCommand(
+            arguments: ["fetch", "--all"],
+            at: projectPath
+        ) else {
+            throw GitError.commandFailed("リモートブランチの取得に失敗")
+        }
+    }
+    
+    
+    func getRemoteOriginURL(projectPath: String) throws -> String {
+        guard let remoteURL = executeGitCommand(arguments: ["config", "--get", "remote.origin.url"], at: projectPath) else {
+            throw GitError.commandFailed("Failed to get remote URL")
+        }
+        return remoteURL
+    }
+
     // MARK: - Private Method
     
     private func executeGitCommand(arguments: [String], at path: String) -> String? {

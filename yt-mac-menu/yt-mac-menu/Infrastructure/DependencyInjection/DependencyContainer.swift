@@ -58,6 +58,10 @@ class DependencyContainer {
         return SendCommitDataUseCase(commitDataRepository: commitDataRepository, fileReader: fileReaderRepository, gitRepository: gitRepository)
     }
     
+    func makeFetchBranchesUseCase() -> FetchBranchesUseCase {
+        return FetchBranchesUseCase(gitRepository: gitRepository)
+    }
+    
     // MARK: - Presentation Layer
     
     private(set) lazy var appCoordinator: AppCoordinator = {
