@@ -28,6 +28,7 @@ class GestureCameraViewModel: ObservableObject {
     
     private let gestureUseCase: GestureDetectionUseCase
     private var cancellables = Set<AnyCancellable>()
+    private var isCameraRunning = false  // カメラ状態を追跡
     
     enum GestureCameraViewState: Equatable {
         case waitingSnap
@@ -139,9 +140,18 @@ class GestureCameraViewModel: ObservableObject {
         switch state {
         case .detectingGesture, .gestureDetected:
             // カメラはカウントダウン中も継続（ユーザーが自分の手を見れるように）
-            cameraUseCase.startCamera()
+            // 既に起動中の場合は再起動しない（AVCaptureSessionエラー回避）
+            if !isCameraRunning {
+                print("📹 カメラを起動します")
+                cameraUseCase.startCamera()
+                isCameraRunning = true
+            }
         case .executingAction, .commitSuccess, .shortcutSuccess, .error, .commandResult, .committingData:
-            cameraUseCase.stopCamera()
+            if isCameraRunning {
+                print("📹 カメラを停止します")
+                cameraUseCase.stopCamera()
+                isCameraRunning = false
+            }
         case .waitingSnap, .unauthorized:
             break
         }
