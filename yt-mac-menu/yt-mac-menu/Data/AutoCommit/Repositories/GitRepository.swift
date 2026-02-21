@@ -110,6 +110,7 @@ class GitRepository: GitRepositoryProtocol {
     }
 
     /// リモートURLから owner と repo を抽出する
+    /// リモートURLから owner と repo を抽出する
     private func extractRepositoryNameAndOwnerName(from remoteURL: String)
     -> (repoName: String?, ownerName: String?) {
         

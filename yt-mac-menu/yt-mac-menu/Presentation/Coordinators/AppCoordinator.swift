@@ -33,7 +33,7 @@ class AppCoordinator: ObservableObject {
     init(
         gestureRepository: GestureRepositoryProtocol,
         executeActionUseCase: ExecuteGestureActionUseCase,
-        cameraManagementUseCase: CameraManagementUseCase
+        cameraManagementUseCase: CameraManagementUseCase,
     ) {
         self.gestureRepository = gestureRepository
         self.executeActionUseCase = executeActionUseCase

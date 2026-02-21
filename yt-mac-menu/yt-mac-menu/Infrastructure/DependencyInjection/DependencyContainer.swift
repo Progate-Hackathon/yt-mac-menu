@@ -63,7 +63,11 @@ class DependencyContainer {
     }
     
     func makeExecuteGestureActionUseCase() -> ExecuteGestureActionUseCase {
-        return ExecuteGestureActionUseCase(sendCommitDataUseCase: makeSendCommitDataUseCase())
+        return ExecuteGestureActionUseCase(sendCommitDataUseCase: makeSendCommitDataUseCase(), stashChangesUseCase: makeStashChangesUseCase())
+    }
+    
+    func makeStashChangesUseCase() -> StashChangesUseCase {
+        return StashChangesUseCase(gitRepository: gitRepository)
     }
     
     // MARK: - Presentation Layer

@@ -21,9 +21,14 @@ final class ExecuteGestureActionUseCase {
     // MARK: - Dependencies
     
     private let sendCommitDataUseCase: SendCommitDataUseCase
+    private let stashChangesUseCase: StashChangesUseCase
     
-    init(sendCommitDataUseCase: SendCommitDataUseCase) {
+    init(
+        sendCommitDataUseCase: SendCommitDataUseCase,
+        stashChangesUseCase: StashChangesUseCase
+    ) {
         self.sendCommitDataUseCase = sendCommitDataUseCase
+        self.stashChangesUseCase = stashChangesUseCase
     }
     
     // MARK: - Public API
@@ -53,7 +58,10 @@ final class ExecuteGestureActionUseCase {
         print("ExecuteGestureActionUseCase: コミット実行")
         do {
             _ = try await sendCommitDataUseCase.sendCommitData()
-            print("ExecuteGestureActionUseCase: コミット成功")
+            print("ExecuteGestureActionUseCase: コミット成功 Stashし始めます。")
+            
+            try stashChangesUseCase.stashChanges()
+
             return .commitSuccess
         } catch {
             print("ExecuteGestureActionUseCase: コミット失敗 - \(error.localizedDescription)")

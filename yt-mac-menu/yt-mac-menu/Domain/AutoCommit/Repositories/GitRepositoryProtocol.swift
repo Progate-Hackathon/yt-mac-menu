@@ -9,6 +9,7 @@
 import Foundation
 
 protocol GitRepositoryProtocol {
+    func stashChanges(projectPath: String) throws
     func getRepositoryName(projectPath: String) throws -> String
     func getRemoteOriginURL(projectPath: String) throws -> String
     func getBranches(projectPath: String) throws -> [String]
