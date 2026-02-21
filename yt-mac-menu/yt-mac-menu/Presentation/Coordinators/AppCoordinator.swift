@@ -25,6 +25,7 @@ class AppCoordinator: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var resetWorkItem: DispatchWorkItem?
     private var isRequestingCameraPermission = false
+    private var isCalibrationMode = false
     
     // Countdown timer properties
     private var countdownTimer: Timer?
@@ -57,6 +58,14 @@ class AppCoordinator: ObservableObject {
         globalHotkeyService.stop()
         KeySender.stopObservingActiveApp()
         transition(to: .idle)
+    }
+
+    func beginCalibration() {
+        isCalibrationMode = true
+    }
+
+    func endCalibration() {
+        isCalibrationMode = false
     }
     
     func handleWindowClose() {
@@ -137,6 +146,8 @@ class AppCoordinator: ObservableObject {
             handleGestureLost(gestureType)
         case .handCount:
             break
+        case .snapCalibrationProgress, .snapCalibrationCompleted:
+            break
         }
     }
     
@@ -173,6 +184,10 @@ class AppCoordinator: ObservableObject {
     }
     
     private func handleSnapDetected() {
+        guard !isCalibrationMode else {
+            print("AppCoordinator: キャリブレーションモード中のためスナップを無視します")
+            return
+        }
         guard currentState == .listeningForSnap else {
             print("AppCoordinator: スナップ検出されましたが、状態が不正です (\(currentState.description))")
             return
