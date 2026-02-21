@@ -16,6 +16,7 @@ enum UserDefaultKeys: String {
     case shouldCreatePR
     case snapTriggerHotkey
     case commandString
+    case onboardingCompleted
 }
 
 final class UserDefaultsManager {

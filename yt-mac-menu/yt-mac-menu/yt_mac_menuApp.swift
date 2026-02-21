@@ -15,6 +15,7 @@ struct yt_mac_menuApp: App {
     init() {
         let coordinator = DependencyContainer.shared.makeAppCoordinator()
         _appViewModel = StateObject(wrappedValue: AppViewModel(coordinator: coordinator))
+        OnboardingWindowController.shared.showIfNeeded()
     }
     
     var body: some Scene {
@@ -23,6 +24,12 @@ struct yt_mac_menuApp: App {
             Divider()
             Button("Quit") {
                 NSApplication.shared.terminate(nil)
+            }
+            Button(action: {
+              let appDomain = Bundle.main.bundleIdentifier
+              UserDefaults.standard.removePersistentDomain(forName: appDomain!)
+            })  {
+              Text("データ削除")
             }
         }
         .onChange(of: appViewModel.isCameraVisible) { _, newValue in

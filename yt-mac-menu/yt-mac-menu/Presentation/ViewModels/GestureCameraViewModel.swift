@@ -67,12 +67,16 @@ class GestureCameraViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
-        // コマンド結果を監視して結果表示状態に遷移
+        // コマンド結果を監視して結果表示状態に遷移、nil受信時はappStateをリセット
         coordinator.$commandResult
             .receive(on: DispatchQueue.main)
-            .compactMap { $0 }
             .sink { [weak self] result in
-                self?.appState = .commandResult(result)
+                guard let self else { return }
+                if let result {
+                    appState = .commandResult(result)
+                } else if case .commandResult = appState {
+                    appState = .waiting
+                }
             }
             .store(in: &cancellables)
     }
