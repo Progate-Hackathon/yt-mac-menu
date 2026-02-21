@@ -1,4 +1,5 @@
 import Foundation
+import ApplicationServices
 
 @MainActor
 final class ExecuteGestureActionUseCase {
@@ -120,13 +121,15 @@ final class ExecuteGestureActionUseCase {
     }
     
     private func executeShortcut(hotkey: Hotkey?) async -> ActionResult {
+        // アクセシビリティ権限チェック
+        guard AXIsProcessTrusted() else {
+            print("ExecuteGestureActionUseCase: アクセシビリティ権限がありません")
+            return .error(ActionError.accessibilityPermissionDenied)
+        }
+        
         guard let hotkey = hotkey else {
             print("ExecuteGestureActionUseCase: ホットキーが設定されていません")
-            return .error(NSError(
-                domain: "ExecuteGestureAction",
-                code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "ホットキーが設定されていません"]
-            ))
+            return .error(ActionError.hotkeyNotConfigured)
         }
         
         print("ExecuteGestureActionUseCase: ショートカット実行 - \(hotkey.displayString)")
@@ -141,11 +144,7 @@ final class ExecuteGestureActionUseCase {
     private func executeCommand(command: String?) async -> ActionResult {
         guard let command = command, !command.isEmpty else {
             print("ExecuteGestureActionUseCase: コマンドが設定されていません")
-            return .error(NSError(
-                domain: "ExecuteGestureAction",
-                code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "コマンドが設定されていません"]
-            ))
+            return .error(ActionError.commandNotConfigured)
         }
         
         print("ExecuteGestureActionUseCase: コマンド実行 - \(command)")
@@ -156,12 +155,7 @@ final class ExecuteGestureActionUseCase {
             return .commandSuccess(result)
         } else {
             print("ExecuteGestureActionUseCase: コマンド失敗 - exit code: \(result.exitCode)")
-            return .error(NSError(
-                domain: "ShellExecutor",
-                code: Int(result.exitCode),
-                userInfo: [NSLocalizedDescriptionKey: result.stderr.isEmpty ?
-                    "コマンドが失敗しました (exit \(result.exitCode))" : result.stderr]
-            ))
+            return .error(ActionError.commandFailed(exitCode: result.exitCode, stderr: result.stderr))
         }
     }
 }

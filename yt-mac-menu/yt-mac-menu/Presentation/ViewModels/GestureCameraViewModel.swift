@@ -249,16 +249,8 @@ extension GestureCameraViewModel.GestureCameraViewState {
                 color: .green
             )
             
-        case .unauthorized:
-            return ViewStateRepresentation(
-                title: "カメラの権限が必要です",
-                subtitle: "システム環境設定で許可してください",
-                iconName: "video.slash",
-                color: .red
-            )
-            
         // Custom UI states - return nil
-        case .waitingSnap, .detectingGesture, .commandResult, .error:
+        case .unauthorized, .waitingSnap, .detectingGesture, .commandResult, .error:
             return nil
         }
     }

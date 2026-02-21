@@ -52,6 +52,19 @@ struct GestureCameraView: View {
                 case .error(let error):
                     ErrorStateView(error: error)
                     
+                case .unauthorized:
+                    PermissionDeniedView(
+                        permissionType: .camera,
+                        onOpenSettings: {
+                            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera") {
+                                NSWorkspace.shared.open(url)
+                            }
+                        },
+                        onClose: {
+                            FloatingWindowController.shared.close()
+                        }
+                    )
+                    
                 case .waitingSnap:
                     // No UI needed - window not visible yet
                     EmptyView()
@@ -254,6 +267,96 @@ struct CountdownOverlayView: View {
             RoundedRectangle(cornerRadius: 20)
                 .fill(.black.opacity(0.7))
         )
+    }
+}
+
+// MARK: - Permission Denied View
+
+enum PermissionType {
+    case camera
+    case accessibility
+    
+    var title: String {
+        switch self {
+        case .camera:
+            return "カメラの権限が必要です"
+        case .accessibility:
+            return "アクセシビリティの権限が必要です"
+        }
+    }
+    
+    var description: String {
+        switch self {
+        case .camera:
+            return "ジェスチャー検出にはカメラへのアクセスが必要です。システム設定で許可してください。"
+        case .accessibility:
+            return "ショートカットキーの送信にはアクセシビリティへのアクセスが必要です。システム設定で許可してください。"
+        }
+    }
+    
+    var iconName: String {
+        switch self {
+        case .camera:
+            return "video.slash.fill"
+        case .accessibility:
+            return "hand.raised.slash.fill"
+        }
+    }
+}
+
+struct PermissionDeniedView: View {
+    let permissionType: PermissionType
+    let onOpenSettings: () -> Void
+    let onClose: () -> Void
+    
+    var body: some View {
+        VStack(spacing: 24) {
+            // Icon
+            Image(systemName: permissionType.iconName)
+                .font(.system(size: 60))
+                .foregroundColor(.red)
+            
+            // Title
+            Text(permissionType.title)
+                .font(.title2.bold())
+                .foregroundColor(.primary)
+            
+            // Description
+            Text(permissionType.description)
+                .font(.body)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 20)
+            
+            // Buttons
+            VStack(spacing: 12) {
+                Button(action: onOpenSettings) {
+                    HStack {
+                        Image(systemName: "gear")
+                        Text("システム設定を開く")
+                    }
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color.blue)
+                    )
+                }
+                .buttonStyle(.plain)
+                
+                Button(action: onClose) {
+                    Text("閉じる")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 40)
+        }
+        .padding(40)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
