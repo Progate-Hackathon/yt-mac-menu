@@ -19,6 +19,7 @@ class GestureCameraViewModel: ObservableObject {
     }
 
     @Published var detectedHandCount: Int = 0
+    @Published var currentCountdown: GestureCountdown?
     
     let cameraUseCase: CameraManagementUseCase
     
@@ -107,6 +108,14 @@ class GestureCameraViewModel: ObservableObject {
             .compactMap { $0 }
             .sink { [weak self] result in
                 self?.gestureCameraViewState = .commandResult(result)
+            }
+            .store(in: &cancellables)
+        
+        // カウントダウン状態を監視
+        coordinator.$activeCountdown
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] countdown in
+                self?.currentCountdown = countdown
             }
             .store(in: &cancellables)
     }

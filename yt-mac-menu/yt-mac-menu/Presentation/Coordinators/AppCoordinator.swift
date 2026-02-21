@@ -1,10 +1,22 @@
 import Foundation
 import Combine
 
+// MARK: - Gesture Countdown Model
+
+struct GestureCountdown {
+    let gestureType: GestureType
+    let secondsRemaining: Int
+}
+
+// MARK: - App Coordinator
+
 class AppCoordinator: ObservableObject {
     @Published private(set) var currentState: AppState = .idle
     @Published private(set) var isCameraVisible: Bool = false
     @Published var commandResult: ShellResult? = nil
+    
+    // カウントダウン状態（タイマーオーバーレイ用）
+    @Published private(set) var activeCountdown: GestureCountdown?
     
     private let gestureRepository: GestureRepositoryProtocol
     private let executeActionUseCase: ExecuteGestureActionUseCase
@@ -226,8 +238,12 @@ class AppCoordinator: ObservableObject {
             return
         }
         
+        // 同じジェスチャーのカウントダウン中は無視（連続イベント対策）
+        if let current = activeCountdown, current.gestureType == gestureType {
+            return
+        }
+        
         print("AppCoordinator: \(gestureType.displayName)検出 - カウントダウン開始（ジェスチャー検出は継続）")
-        // ジェスチャー検出は継続（gesture_lost イベントを受信するため）
         startCountdown(for: gestureType)
     }
     
@@ -237,7 +253,8 @@ class AppCoordinator: ObservableObject {
         
         currentGestureType = gestureType
         var countdown = 3
-        transition(to: .gestureDetected(gestureType, countdown: countdown))
+        // 状態遷移なし - オーバーレイで表示
+        activeCountdown = GestureCountdown(gestureType: gestureType, secondsRemaining: countdown)
         
         countdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
             guard let self = self else {
@@ -248,40 +265,30 @@ class AppCoordinator: ObservableObject {
             countdown -= 1
             
             if countdown > 0 {
-                self.transition(to: .gestureDetected(gestureType, countdown: countdown))
+                self.activeCountdown = GestureCountdown(gestureType: gestureType, secondsRemaining: countdown)
             } else {
                 timer.invalidate()
                 self.countdownTimer = nil
+                self.activeCountdown = nil
                 self.executeActionForGesture(gestureType)
             }
         }
     }
     
     private func handleGestureLost(_ gestureType: GestureType) {
-        // Only cancel if we're in countdown state
-        guard case .gestureDetected(let currentGesture, _) = currentState else {
-            return
-        }
+        // カウントダウン中のみキャンセル
+        guard activeCountdown != nil else { return }
         
-        // Optional validation: check if lost gesture matches current
-        if currentGesture == gestureType {
-            print("AppCoordinator: \(gestureType.displayName)ロスト - カウントダウンをキャンセル")
-            cancelCountdown()
-            transition(to: .detectingGesture)
-            gestureRepository.sendCommand(.enableGesture)
-        } else {
-            print("AppCoordinator: ⚠️ 予期しないジェスチャーロスト: \(gestureType.displayName), 現在: \(currentGesture.displayName)")
-            // Still cancel to be safe
-            cancelCountdown()
-            transition(to: .detectingGesture)
-            gestureRepository.sendCommand(.enableGesture)
-        }
+        print("AppCoordinator: ジェスチャーロスト - カウントダウンをキャンセル（カメラと検出は継続）")
+        cancelCountdown()
+        // 状態遷移なし・カメラ継続・検出継続
     }
     
     private func cancelCountdown() {
         countdownTimer?.invalidate()
         countdownTimer = nil
         currentGestureType = nil
+        activeCountdown = nil
     }
     
     private func executeActionForGesture(_ gestureType: GestureType) {

@@ -28,10 +28,19 @@ struct GestureCameraView: View {
                 // Custom UI for special states
                 switch gestureCameraViewModel.gestureCameraViewState {
                 case .detectingGesture:
-                    ActiveCameraView(
-                        session: gestureCameraViewModel.session,
-                        detectedHandCount: $gestureCameraViewModel.detectedHandCount
-                    )
+                    ZStack {
+                        ActiveCameraView(
+                            session: gestureCameraViewModel.session,
+                            detectedHandCount: $gestureCameraViewModel.detectedHandCount
+                        )
+                        
+                        // カウントダウンオーバーレイ
+                        if let countdown = gestureCameraViewModel.currentCountdown {
+                            CountdownOverlayView(countdown: countdown)
+                                .transition(.scale.combined(with: .opacity))
+                                .animation(.easeInOut(duration: 0.3), value: countdown.secondsRemaining)
+                        }
+                    }
                     
                 case .commandResult(let result):
                     CommandResultView(result: result) {
@@ -162,5 +171,35 @@ struct CameraPreviewView: NSViewRepresentable {
                 }
             }
         }
+    }
+}
+
+// MARK: - Countdown Overlay
+
+struct CountdownOverlayView: View {
+    let countdown: GestureCountdown
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            Text(countdown.gestureType.emoji)
+                .font(.system(size: 48))
+            
+            Text(countdown.gestureType.displayName)
+                .font(.title2.bold())
+                .foregroundColor(.white)
+            
+            Text("\(countdown.secondsRemaining)")
+                .font(.system(size: 64, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+            
+            Text("秒後にアクションを実行します")
+                .font(.subheadline)
+                .foregroundColor(.white.opacity(0.8))
+        }
+        .padding(32)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(.black.opacity(0.6))
+        )
     }
 }
