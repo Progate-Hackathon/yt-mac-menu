@@ -30,18 +30,12 @@ class GitRepository: GitRepositoryProtocol {
     /// 現在チェックアウトしているブランチ名を取得する
     func getCurrentBranch(projectPath: String) throws -> String {
         // ターミナルコマンド git rev-parse --abbrev-ref HEAD
-        guard let branch = executeGitCommand(arguments: ["rev-parse", "--abbrev-ref", "HEAD"], at: projectPath) else {
-            throw GitError.commandFailed("Failed to get current branch")
-        }
-        return branch
+        return try executeGitCommand(arguments: ["rev-parse", "--abbrev-ref", "HEAD"], at: projectPath)
     }
     
     /// Git diffを取得する
     func getDiff(projectPath: String) throws -> String {
-        guard let diff = executeGitCommand(arguments: ["diff"], at: projectPath) else {
-            throw GitError.commandFailed("Failed to get diff")
-        }
-        return diff
+        return try executeGitCommand(arguments: ["diff"], at: projectPath)
     }
     
     /// リポジトリのオーナー名を取得する
@@ -60,22 +54,17 @@ class GitRepository: GitRepositoryProtocol {
     
     /// 変更されたファイルのパスを取得する
     func getChangedFilePaths(projectPath: String) throws -> [String] {
-        guard let output = executeGitCommand(arguments: ["diff", "--name-only"], at: projectPath) else {
-            print("GitRepository: 変更されたファイルはありません。")
-            return []
-        }
-                
+        let output = try executeGitCommand(arguments: ["diff", "--name-only"], at: projectPath)
+        if output.isEmpty { return [] }
         return output.split(separator: "\n").map(String.init)
     }
     
     
     func getBranches(projectPath: String) throws -> [String] {
-        guard let output = executeGitCommand(
+        let output = try executeGitCommand(
             arguments: ["branch", "--format=%(refname:short)"],
             at: projectPath
-        ) else {
-            throw GitError.commandFailed("結果の取得に失敗")
-        }
+        )
 
         let branches = output
             .split(separator: "\n")
@@ -86,40 +75,41 @@ class GitRepository: GitRepositoryProtocol {
     }
 
     func fetchRemoteBranches(projectPath: String) throws {
-        let errorString = executeGitCommand(arguments: ["fetch", "--all"], at: projectPath)
-        if errorString != nil {
-            throw GitError.commandFailed("リモートブランチの取得に失敗")
-        }
+        try executeGitCommand(arguments: ["fetch", "--all"], at: projectPath)
     }
     
     
     func getRemoteOriginURL(projectPath: String) throws -> String {
-        guard let remoteURL = executeGitCommand(arguments: ["config", "--get", "remote.origin.url"], at: projectPath) else {
-            throw GitError.commandFailed("Failed to get remote URL")
-        }
-        return remoteURL
+        return try executeGitCommand(arguments: ["config", "--get", "remote.origin.url"], at: projectPath)
     }
-
+    
+    
+    
+    func stashChanges(projectPath: String) throws {
+        try executeGitCommand(arguments: ["stash", "push", "-m", "コミット前の変更"], at: projectPath)
+    }
+    
+    
     // MARK: - Private Method
     
-    private func executeGitCommand(arguments: [String], at path: String) -> String? {
+    @discardableResult
+    private func executeGitCommand(arguments: [String], at path: String) throws -> String {
         let result = GitExecutor.executeSync(
             arguments: arguments,
             at: path
         )
 
         guard result.isSuccess else {
-            if !result.stderr.isEmpty {
-                print("[GitRepository] Gitコマンドが終了コードで失敗しました \(result.exitCode): git \(arguments.joined(separator: " ")), stderr: \(result.stderr)")
-            } else {
-                print("[GitRepository] Gitコマンドが終了コードで失敗しました \(result.exitCode): git \(arguments.joined(separator: " "))")
-            }
-            return nil
+            let detail = result.stderr.isEmpty
+                ? "exit code \(result.exitCode)"
+                : result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+            throw GitError.commandFailed("git \(arguments.joined(separator: " ")): \(detail)")
         }
 
-        return result.stdout.isEmpty ? nil : result.stdout
+        return result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    /// リモートURLから owner と repo を抽出する
     /// リモートURLから owner と repo を抽出する
     private func extractRepositoryNameAndOwnerName(from remoteURL: String)
     -> (repoName: String?, ownerName: String?) {
