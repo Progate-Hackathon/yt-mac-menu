@@ -61,8 +61,10 @@ class GitRepository: GitRepositoryProtocol {
     /// 変更されたファイルのパスを取得する
     func getChangedFilePaths(projectPath: String) throws -> [String] {
         guard let output = executeGitCommand(arguments: ["diff", "--name-only"], at: projectPath) else {
-            throw GitError.commandFailed("Failed to get changed file paths")
+            print("GitRepository: 変更されたファイルはありません。")
+            return []
         }
+                
         return output.split(separator: "\n").map(String.init)
     }
     
