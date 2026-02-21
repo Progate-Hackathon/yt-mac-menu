@@ -5,24 +5,26 @@ struct ShortcutView: View {
     @State private var showSnapTriggerPopover = false
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            // セクション: snap検知トリガーショートカット
-            snapTriggerSection
-            
-            Divider()
-            
-            // セクション: ハートジェスチャーアクション
-            GestureActionSection(gestureType: .heart, viewModel: viewModel)
-            
-            Divider()
-            
-            // セクション: ピースジェスチャーアクション
-            GestureActionSection(gestureType: .peace, viewModel: viewModel)
-            
-            Divider()
-            
-            // セクション: サムズアップジェスチャーアクション
-            GestureActionSection(gestureType: .thumbsUp, viewModel: viewModel)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                // セクション: snap検知トリガーショートカット
+                snapTriggerSection
+                
+                Divider()
+                
+                // セクション: ハートジェスチャーアクション
+                GestureActionSection(gestureType: .heart, viewModel: viewModel)
+                
+                Divider()
+                
+                // セクション: ピースジェスチャーアクション
+                GestureActionSection(gestureType: .peace, viewModel: viewModel)
+                
+                Divider()
+                
+                // セクション: サムズアップジェスチャーアクション
+                GestureActionSection(gestureType: .thumbsUp, viewModel: viewModel)
+            }
         }
     }
     // MARK: - Snap Trigger Section
