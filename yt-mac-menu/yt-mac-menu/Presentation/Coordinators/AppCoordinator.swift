@@ -54,7 +54,7 @@ class AppCoordinator: ObservableObject {
         cameraManagementUseCase.stopCamera()
         
         switch currentState {
-            case .detectingHeart, .heartDetected, .committingData, .commitSuccess, .commitError, .shortcutSuccess:
+            case .detectingGesture, .thumbsUpDetected, .peaceDetected, .heartDetected, .committingData, .commitSuccess, .commitError, .shortcutSuccess:
             // ハート検出中、処理中、またはエラー状態から閉じる場合は、スナップ待機モードに戻る
             print("AppCoordinator: スナップ待機モードへリセット")
             
@@ -65,7 +65,7 @@ class AppCoordinator: ObservableObject {
                 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     self?.transition(to: .idle)
-                    self?.gestureRepository.sendCommand(.disableHeart)
+                    self?.gestureRepository.sendCommand(.disableGesture)
                 }
             }
             
@@ -84,7 +84,7 @@ class AppCoordinator: ObservableObject {
             print("AppCoordinator: カメラを非表示にしてスナップ待機に戻ります")
             isCameraVisible = false
 
-        case .snapDetected:
+            case .snapDetected:
             // スナップ検出直後（カメラ未起動）に閉じた場合はsnap検知を再開する
             print("AppCoordinator: snapDetected中に閉じられました → snap検知を再開")
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
@@ -110,10 +110,14 @@ class AppCoordinator: ObservableObject {
             handleConnected()
         case .disconnected:
             handleDisconnected()
-        case .snapDetected:
+        case .audioDetected(.snap):
             handleSnapDetected()
-        case .heartDetected:
+        case .gestureDetected(.heart):
             handleHeartDetected()
+        case .gestureDetected(.thumbsUp):
+            handleThumbsUpDetected()
+        case .gestureDetected(.peace):
+            handlePeaceDetected()
         case .handCount:
             break
         }
@@ -205,14 +209,14 @@ class AppCoordinator: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
             guard let self = self else { return }
             print("AppCoordinator: ウィンドウを開いてハート検出を有効化")
-            self.gestureRepository.sendCommand(.enableHeart)
+            self.gestureRepository.sendCommand(.enableGesture)
             self.isCameraVisible = true
-            self.transition(to: .detectingHeart)
+            self.transition(to: .detectingGesture)
         }
     }
     
     private func handleHeartDetected() {
-        guard currentState == .detectingHeart else {
+        guard currentState == .detectingGesture else {
             print("AppCoordinator: ハート検出されましたが、状態が不正です (\(currentState.description))")
             return
         }
@@ -222,7 +226,7 @@ class AppCoordinator: ObservableObject {
             
             print("AppCoordinator: ハート検出 → アクション実行 (\(actionType.displayName))")
             transition(to: .heartDetected)
-            gestureRepository.sendCommand(.disableHeart)
+            gestureRepository.sendCommand(.disableGesture)
             
             // アクションタイプに応じて処理を分岐
             switch actionType {
@@ -231,6 +235,51 @@ class AppCoordinator: ObservableObject {
             case .shortcut:
                 executeShortcut()
             }
+        }
+    }
+    
+    private func handleThumbsUpDetected() {
+        guard currentState == .detectingGesture else {
+            print("AppCoordinator: サムズアップ検出されましたが、状態が不正です (\(currentState.description))")
+            return
+        }
+        
+        print("AppCoordinator: サムズアップ検出")
+        
+        // TODO: Implement thumbs up action here
+        // For now, just close the window and return to idle
+        
+        gestureRepository.sendCommand(.disableGesture)
+        
+        // Proper state transition before closing window
+        transition(to: .resetting)
+        isCameraVisible = false
+        
+        // Reset to idle state
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.transition(to: .idle)
+        }
+    }
+    
+    private func handlePeaceDetected() {
+        guard currentState == .detectingGesture else {
+            print("AppCoordinator: ピース検出されましたが、状態が不正です (\(currentState.description))")
+            return
+        }
+        
+        print("AppCoordinator: ピース検出")
+        
+        // TODO: Implement peace gesture action here
+        // Action will be configurable via settings UI (to be implemented)
+        // For now, just close the window
+        
+        gestureRepository.sendCommand(.disableGesture)
+        
+        transition(to: .resetting)
+        isCameraVisible = false
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.transition(to: .idle)
         }
     }
     

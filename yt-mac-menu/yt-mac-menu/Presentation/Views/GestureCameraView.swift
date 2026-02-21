@@ -19,31 +19,33 @@ struct GestureCameraView: View {
     
     var body: some View {
         ZStack {
-            switch gestureCameraViewModel.appState {
-                case .detecting:
-                    ActiveCameraView(session: gestureCameraViewModel.session, detectedHandCount: $gestureCameraViewModel.detectedHandCount)
-                case .success, .shortcutSuccess:
+            if let feedback = gestureCameraViewModel.gestureCameraViewState.feedbackRepresentation {
+                // All feedback states use the same component with different data
                 StatusFeedbackSectionView(
-                    title: "送信完了しました",
-                    subtitle: "3秒後に閉じます...",
-                    iconName: "checkmark.circle.fill",
-                    color: .green
+                    title: feedback.title,
+                    subtitle: feedback.subtitle,
+                    iconName: feedback.iconName,
+                    color: feedback.color
                 )
-            case .waiting:
-                StatusFeedbackSectionView(
-                    title: "読み込み中です",
-                    subtitle: "しばらくお待ちください...",
-                    iconName: "hourglass",
-                    color: .gray
-                )
-            case .unauthorized:
-                VStack {
-                    Image(systemName: "video.slash")
-                        .font(.largeTitle)
-                    Text("カメラの権限が必要です")
+            } else {
+                // Custom UI for special states
+                switch gestureCameraViewModel.gestureCameraViewState {
+                case .detectingGesture:
+                    ActiveCameraView(
+                        session: gestureCameraViewModel.session,
+                        detectedHandCount: $gestureCameraViewModel.detectedHandCount
+                    )
+                    
+                case .error(let error):
+                    ErrorStateView(error: error)
+                    
+                case .waitingSnap:
+                    // No UI needed - window not visible yet
+                    EmptyView()
+                    
+                default:
+                    EmptyView()
                 }
-            case .error(let error):
-                ErrorStateView(error: error)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

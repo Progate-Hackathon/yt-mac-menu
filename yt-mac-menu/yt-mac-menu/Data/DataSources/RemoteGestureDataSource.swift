@@ -37,25 +37,68 @@ class RemoteGestureDataSource {
         guard let data = jsonString.data(using: .utf8) else { return }
         
         struct ServerEvent: Decodable {
-            let event: String
+            let event: String?
+            let type: String?
             let count: Int?
+            let status: String?
         }
         
-        if let decoded = try? JSONDecoder().decode(ServerEvent.self, from: data) {
-            switch decoded.event {
-            case "heart":
-                print("✅ ハート受信")
-                eventSubject.send(.heartDetected)
-            case "hand_count":
-                print("✅ 手の数受信: \(decoded.count ?? -1)")
-                if let count = decoded.count {
-                    eventSubject.send(.handCount(count))
-                }
-            case "snap":
-                print("✅ スナップ受信")
-                eventSubject.send(.snapDetected)
-            default:
-                break
+        guard let decoded = try? JSONDecoder().decode(ServerEvent.self, from: data) else {
+            print("⚠️ Failed to decode event: \(jsonString)")
+            return
+        }
+        
+        // Handle status events first (they don't have 'event' field)
+        if let status = decoded.status {
+            print("📋 Server status: \(status)")
+            return
+        }
+        
+        // Ensure event field exists for other event types
+        guard let eventTypeString = decoded.event else {
+            print("⚠️ Missing event field: \(jsonString)")
+            return
+        }
+        
+        // Dynamic event type parsing
+        guard let eventType = EventType(rawValue: eventTypeString) else {
+            print("⚠️ Unknown event type: \(eventTypeString)")
+            return
+        }
+        
+        print("📨 Received: event=\(eventTypeString), type=\(decoded.type ?? "nil"), count=\(decoded.count ?? -1)")
+        
+        switch eventType {
+        case .audio:
+            guard let typeString = decoded.type else {
+                print("⚠️ audio event missing type field")
+                return
+            }
+            
+            if let audioType = AudioType(rawValue: typeString) {
+                print("✅ オーディオ受信: \(typeString)")
+                eventSubject.send(.audioDetected(audioType))
+            } else {
+                print("⚠️ Unknown audio type: \(typeString)")
+            }
+            
+        case .gesture:
+            guard let typeString = decoded.type else {
+                print("⚠️ gesture event missing type field")
+                return
+            }
+            
+            if let gestureType = GestureType(rawValue: typeString) {
+                print("✅ ジェスチャー受信: \(typeString)")
+                eventSubject.send(.gestureDetected(gestureType))
+            } else {
+                print("⚠️ Unknown gesture type: \(typeString)")
+            }
+            
+        case .handCount:
+            print("✅ 手の数受信: \(decoded.count ?? -1)")
+            if let count = decoded.count {
+                eventSubject.send(.handCount(count))
             }
         }
     }

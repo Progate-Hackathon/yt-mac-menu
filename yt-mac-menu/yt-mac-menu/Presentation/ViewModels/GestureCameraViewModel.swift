@@ -2,9 +2,20 @@ import AVFoundation
 import SwiftUI
 import Combine
 
+// MARK: - View State Representation
+
+struct ViewStateRepresentation {
+    let title: String
+    let subtitle: String
+    let iconName: String
+    let color: Color
+}
+
+// MARK: - ViewModel
+
 class GestureCameraViewModel: ObservableObject {
-    @Published var appState: AppStatus = .waiting {
-        didSet { handleStateChange(appState) }
+    @Published var gestureCameraViewState: GestureCameraViewState = .waitingSnap {
+        didSet { handleStateChange(gestureCameraViewState) }
     }
 
     @Published var detectedHandCount: Int = 0
@@ -20,19 +31,23 @@ class GestureCameraViewModel: ObservableObject {
     private let gestureUseCase: GestureDetectionUseCase
     private var cancellables = Set<AnyCancellable>()
     
-    enum AppStatus: Equatable {
-        case waiting
-        case detecting
-        case success
+    enum GestureCameraViewState: Equatable {
+        case waitingSnap
+        case detectingGesture
+        case committingData
+        case heartDetected
         case unauthorized
+        case commitSuccess
+        case thumbsUpDetected
+        case peaceDetected
         case shortcutSuccess
         case error(Error)
         
-        static func == (lhs: AppStatus, rhs: AppStatus) -> Bool {
+        static func == (lhs: GestureCameraViewState, rhs: GestureCameraViewState) -> Bool {
             switch (lhs, rhs) {
-            case (.waiting, .waiting),
-                 (.detecting, .detecting),
-                 (.success, .success),
+            case (.waitingSnap, .waitingSnap),
+                 (.detectingGesture, .detectingGesture),
+                 (.commitSuccess, .commitSuccess),
                  (.unauthorized, .unauthorized):
                 return true
             case (.error(let lhsError), .error(let rhsError)):
@@ -69,16 +84,24 @@ class GestureCameraViewModel: ObservableObject {
     
     private func updateAppStatus(from coordinatorState: AppState) {
         switch coordinatorState {
-        case .detectingHeart:
-            appState = .detecting
-        case .commitSuccess:
-            appState = .success
-        case .commitError(let error):
-            appState = .error(error)
-        case .shortcutSuccess:
-            appState = .shortcutSuccess
-        default:
-            break
+            case .detectingGesture:
+                gestureCameraViewState = .detectingGesture
+            case .commitSuccess:
+                gestureCameraViewState = .commitSuccess
+            case .commitError(let error):
+                gestureCameraViewState = .error(error)
+            case .shortcutSuccess:
+                gestureCameraViewState = .shortcutSuccess
+            case .committingData:
+                gestureCameraViewState = .committingData
+            case .heartDetected:
+                gestureCameraViewState = .heartDetected
+            case .peaceDetected:
+                gestureCameraViewState = .peaceDetected
+            case .thumbsUpDetected:
+                gestureCameraViewState = .thumbsUpDetected
+            case .idle, .listeningForSnap, .resetting, .snapDetected:
+                break
         }
     }
     
@@ -98,13 +121,13 @@ class GestureCameraViewModel: ObservableObject {
     }
     
 
-    private func handleStateChange(_ state: AppStatus) {
+    private func handleStateChange(_ state: GestureCameraViewState) {
         switch state {
-        case .detecting:
+        case .detectingGesture:
             cameraUseCase.startCamera()
-            case .success, .shortcutSuccess, .error:
+            case .commitSuccess, .shortcutSuccess, .error, .committingData, .heartDetected, .thumbsUpDetected, .peaceDetected:
             cameraUseCase.stopCamera()
-        case .waiting, .unauthorized:
+        case .waitingSnap, .unauthorized:
             break
         }
     }
@@ -114,10 +137,78 @@ class GestureCameraViewModel: ObservableObject {
             guard let self = self else { return }
             if granted {
                 self.cameraUseCase.setupCamera()
-                self.appState = .detecting
+                self.gestureCameraViewState = .detectingGesture
             } else {
-                self.appState = .unauthorized
+                self.gestureCameraViewState = .unauthorized
             }
+        }
+    }
+}
+
+// MARK: - View State Representation Extension
+
+extension GestureCameraViewModel.GestureCameraViewState {
+    var feedbackRepresentation: ViewStateRepresentation? {
+        switch self {
+        case .heartDetected:
+            return ViewStateRepresentation(
+                title: "ハート検出！",
+                subtitle: "コミット中...",
+                iconName: "heart.fill",
+                color: .pink
+            )
+            
+        case .thumbsUpDetected:
+            return ViewStateRepresentation(
+                title: "サムズアップ検出！",
+                subtitle: "処理中...",
+                iconName: "hand.thumbsup.fill",
+                color: .blue
+            )
+            
+        case .peaceDetected:
+            return ViewStateRepresentation(
+                title: "ピース検出！",
+                subtitle: "処理中...",
+                iconName: "hand.raised.fingers.spread.fill",
+                color: .purple
+            )
+            
+        case .committingData:
+            return ViewStateRepresentation(
+                title: "データ送信中",
+                subtitle: "しばらくお待ちください...",
+                iconName: "arrow.up.circle.fill",
+                color: .orange
+            )
+            
+        case .commitSuccess:
+            return ViewStateRepresentation(
+                title: "コミット完了！",
+                subtitle: "3秒後に閉じます...",
+                iconName: "checkmark.circle.fill",
+                color: .green
+            )
+            
+        case .shortcutSuccess:
+            return ViewStateRepresentation(
+                title: "ショートカット実行完了！",
+                subtitle: "3秒後に閉じます...",
+                iconName: "checkmark.circle.fill",
+                color: .green
+            )
+            
+        case .unauthorized:
+            return ViewStateRepresentation(
+                title: "カメラの権限が必要です",
+                subtitle: "システム環境設定で許可してください",
+                iconName: "video.slash",
+                color: .red
+            )
+            
+        // Custom UI states - return nil
+        case .waitingSnap, .detectingGesture, .error:
+            return nil
         }
     }
 }

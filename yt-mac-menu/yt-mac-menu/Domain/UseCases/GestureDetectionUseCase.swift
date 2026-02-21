@@ -20,13 +20,13 @@ class GestureDetectionUseCase {
         gestureRepository.sendCommand(.disableSnap)
     }
     
-    func startListeningForHeart() {
-        gestureRepository.sendCommand(.enableHeart)
-    }
+//    func startListeningForHeart() {
+//        gestureRepository.sendCommand(.enableHeart)
+//    }
     
-    func stopListeningForHeart() {
-        gestureRepository.sendCommand(.disableHeart)
-    }
+//    func stopListeningForHeart() {
+//        gestureRepository.sendCommand(.disableHeart)
+//    }
     
     func connect() {
         gestureRepository.connect()
