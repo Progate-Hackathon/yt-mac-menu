@@ -31,7 +31,9 @@ struct GestureCameraView: View {
                     ZStack {
                         ActiveCameraView(
                             session: gestureCameraViewModel.session,
-                            detectedHandCount: $gestureCameraViewModel.detectedHandCount
+                            detectedHandCount: $gestureCameraViewModel.detectedHandCount,
+                            gestureMode: gestureCameraViewModel.detectedHandCount >= 2 ? .twoHands : .oneHand
+
                         )
                         
                         // カウントダウンオーバーレイ
@@ -64,15 +66,19 @@ struct GestureCameraView: View {
     }
 }
 
+enum GestureMode {
+    case oneHand
+    case twoHands
+}
 
 struct ActiveCameraView: View {
     let session: AVCaptureSession
     @State private var triggerUpdate = false
     @Binding var detectedHandCount: Int
+    var gestureMode: GestureMode   // ← 追加
     
     var body: some View {
         ZStack {
-            // Camera
             CameraPreviewView(session: session, triggerUpdate: triggerUpdate)
                 .ignoresSafeArea()
                 .onAppear {
@@ -81,7 +87,6 @@ struct ActiveCameraView: View {
                     }
                 }
             
-            // Overlay UI
             VStack {
                 Spacer()
                 
@@ -118,21 +123,43 @@ struct ActiveCameraView: View {
     }
     
     private var statusInfo: (String, String, Color) {
-        switch detectedHandCount {
-        case 0:
-            return ("手をカメラの前に出してください",
-                    "camera.viewfinder",
-                    .red)
+        switch gestureMode {
             
-        case 1:
-            return ("もう片方の手を追加してください",
-                    "hand.raised.fill",
-                    .orange)
+        case .oneHand:
+            switch detectedHandCount {
+            case 0:
+                return ("手をカメラの前に出してください",
+                        "camera.viewfinder",
+                        .red)
+                    
+            case 1:
+                return ("👍 または ✌️ を作ってください",
+                        "hand.raised.fill",
+                        .green)
+                    
+            default:
+                return ("1本モードです ✋ 片手だけ使ってください",
+                        "exclamationmark.triangle.fill",
+                        .orange)
+            }
             
-        default:
-            return ("準備OK！🫶 ジェスチャーを作ってください",
-                    "hands.sparkles.fill",
-                    .green)
+        case .twoHands:
+            switch detectedHandCount {
+            case 0:
+                return ("両手をカメラの前に出してください",
+                        "camera.viewfinder",
+                        .red)
+                    
+            case 1:
+                return ("もう片方の手を追加してください",
+                        "hands.clap.fill",
+                        .orange)
+                    
+            default:
+                return ("🫶 を作ってください",
+                        "hands.clap.fill",
+                        .green)
+            }
         }
     }
 }
