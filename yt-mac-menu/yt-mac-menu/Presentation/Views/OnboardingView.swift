@@ -22,8 +22,9 @@ struct OnboardingView: View {
                 case 0: step0Welcome
                 case 1: step1GitHub
                 case 2: step2SnapTrigger
-                case 3: step3HeartAction
-                case 4: step4Done
+                case 3: step3SnapCalibration
+                case 4: step4HeartAction
+                case 5: step5Done
                 default: EmptyView()
                 }
             }
@@ -32,7 +33,7 @@ struct OnboardingView: View {
 
             // ナビゲーションボタン
             HStack {
-                if vm.currentStep > 0 && vm.currentStep < vm.totalSteps - 1 {
+                if vm.currentStep > 0 && vm.currentStep < vm.totalSteps - 1 && vm.currentStep != 3 {
                     Button("戻る") { vm.back() }
                         .buttonStyle(.plain)
                         .foregroundStyle(.secondary)
@@ -152,9 +153,67 @@ struct OnboardingView: View {
         }
     }
 
-    // MARK: - Step 3: ハートアクション
+    // MARK: - Step 3: スナップキャリブレーション
 
-    private var step3HeartAction: some View {
+    private var step3SnapCalibration: some View {
+        VStack(spacing: 24) {
+            stepHeader(icon: "waveform.circle.fill", title: "スナップ音キャリブレーション", subtitle: "あなたの指パッチン音を学習します。\(vm.calibrationTarget)回パッチンを鳴らしてください")
+
+            if vm.calibrationCompleted {
+                VStack(spacing: 12) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 56))
+                        .foregroundStyle(.green)
+                    Text("プロファイルを作成しました！")
+                        .font(.title2).bold()
+                    Text("これであなたのスナップ音に最適化されました。")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+            } else {
+                VStack(spacing: 12) {
+                    Image(systemName: "hand.point.up.fill")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.yellow)
+                        .symbolEffect(.bounce, options: .repeating)
+                    Text("\(vm.calibrationCollected) / \(vm.calibrationTarget)")
+                        .font(.system(size: 32, weight: .bold, design: .monospaced))
+                    ProgressView(value: Double(vm.calibrationCollected), total: Double(vm.calibrationTarget))
+                        .progressViewStyle(.linear)
+                        .frame(maxWidth: 260)
+                    if !vm.isCalibrating {
+                        Text("キャリブレーションを開始しています...")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("👆 指パッチンを鳴らしてください")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            Spacer()
+
+            HStack {
+                Spacer()
+                Button("次へ") { vm.stopCalibrationSubscription(); vm.next() }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!vm.calibrationCompleted)
+            }
+        }
+        .onAppear {
+            if !vm.calibrationCompleted {
+                vm.startCalibration()
+            }
+        }
+        .onDisappear { vm.stopCalibrationSubscription() }
+    }
+
+    // MARK: - Step 4: ハートアクション
+
+    private var step4HeartAction: some View {
         VStack(alignment: .leading, spacing: 14) {
             stepHeader(icon: "heart.fill", title: "ハート検出アクション", subtitle: "🫶ジェスチャーを検出したときの動作を設定します")
 
@@ -240,9 +299,9 @@ struct OnboardingView: View {
         }
     }
 
-    // MARK: - Step 4: 完了
+    // MARK: - Step 5: 完了
 
-    private var step4Done: some View {
+    private var step5Done: some View {
         VStack(spacing: 20) {
             Image(systemName: "checkmark.seal.fill")
                 .font(.system(size: 52))
