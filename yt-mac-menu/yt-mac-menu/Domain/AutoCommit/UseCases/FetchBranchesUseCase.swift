@@ -8,12 +8,20 @@
 import Foundation
 
 class FetchBranchesUseCase {
-    private let gitRepository: GitRepository
+    private let gitRepository: GitRepositoryProtocol
     
-    init(gitRepository: GitRepository) {
+    init(gitRepository: GitRepositoryProtocol) {
         self.gitRepository = gitRepository
     }
     
+    func fetchRemoteBranches() throws {
+        guard let projectPath = UserDefaultsManager.shared.get(key: .projectFolderPath, type: String.self) else {
+            print("FetchBranchesUseCase: Project Pathが見つかりません。")
+            throw FetchBranchesUseCaseError.projectPathNotFound
+        }
+        
+        try gitRepository.fetchRemoteBranches(projectPath: projectPath)
+    }
     
     func getBranches() throws -> [String] {
         guard let projectPath = UserDefaultsManager.shared.get(key: .projectFolderPath, type: String.self) else {

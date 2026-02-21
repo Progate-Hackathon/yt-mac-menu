@@ -9,6 +9,7 @@ import Foundation
 
 /// プロジェクトのGit情報（リポジトリ名、ブランチ名）を取得するRepositoryクラス
 class GitRepository: GitRepositoryProtocol {
+    
 
     // MARK: - Public Methods (GitRepositoryProtocol Implementation)
     
@@ -77,8 +78,18 @@ class GitRepository: GitRepositoryProtocol {
         let branches = output
             .split(separator: "\n")
             .map { String($0).trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
 
         return branches
+    }
+
+    func fetchRemoteBranches(projectPath: String) throws {
+        guard let _ = executeGitCommand(
+            arguments: ["fetch", "--all"],
+            at: projectPath
+        ) else {
+            throw GitError.commandFailed("リモートブランチの取得に失敗")
+        }
     }
     
     

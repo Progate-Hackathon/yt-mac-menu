@@ -1,11 +1,18 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @StateObject private var settingsViewModel = SettingsViewModel()
+    @StateObject private var settingsViewModel: SettingsViewModel
     @State private var settingsWindow: NSWindow?
     
     private var basicSettingsAreSet: Bool {
-        !settingsViewModel.selectedProjectPath.isEmpty && !settingsViewModel.githubToken.isEmpty
+        // 保存済みの設定があるかをチェック
+        settingsViewModel.settingsSaved
+    }
+    
+    
+    init() {
+        let fetchBranchesUseCase = DependencyContainer.shared.makeFetchBranchesUseCase()
+        _settingsViewModel = StateObject(wrappedValue: SettingsViewModel(fetchBranchesUseCase: fetchBranchesUseCase))
     }
     
     var body: some View {
@@ -21,10 +28,24 @@ struct SettingsView: View {
                         Text("高度な設定")
                             .font(.headline)
                         
-                        BaseBranchSectionView(baseBranch: $settingsViewModel.baseBranch)
+                        BaseBranchSectionView(
+                            baseBranch: $settingsViewModel.baseBranch,
+                            availableBranches: settingsViewModel.availableBranches,
+                            isFetching: settingsViewModel.isFetchingBranches,
+                            error: settingsViewModel.branchFetchError,
+                            onRetry: {
+                                Task {
+                                    await settingsViewModel.fetchBranches()
+                                }
+                            }
+                        )
                         CreatePRSectionView(shouldCreatePR: $settingsViewModel.shouldCreatePR)
                     }
                     .transition(.opacity)
+                    .task {
+                        // Fetch branches when advanced settings appear
+                        await settingsViewModel.fetchBranches()
+                    }
                 }
                 
                 errorMessage
