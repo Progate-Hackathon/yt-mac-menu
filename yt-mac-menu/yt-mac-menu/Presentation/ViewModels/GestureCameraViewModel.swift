@@ -33,11 +33,10 @@ class GestureCameraViewModel: ObservableObject {
         case waitingSnap
         case detectingGesture
         case committingData
-        case heartDetected
+        case gestureDetected(GestureType, countdown: Int)
+        case executingAction
         case unauthorized
         case commitSuccess
-        case thumbsUpDetected
-        case peaceDetected
         case shortcutSuccess
         case commandResult(ShellResult)
         case error(Error)
@@ -46,11 +45,15 @@ class GestureCameraViewModel: ObservableObject {
             switch (lhs, rhs) {
             case (.waitingSnap, .waitingSnap),
                  (.detectingGesture, .detectingGesture),
+                 (.committingData, .committingData),
+                 (.executingAction, .executingAction),
                  (.commitSuccess, .commitSuccess),
                  (.unauthorized, .unauthorized),
                  (.commandResult, .commandResult),
                  (.shortcutSuccess, .shortcutSuccess):
                 return true
+            case (.gestureDetected(let lhsGesture, let lhsCountdown), .gestureDetected(let rhsGesture, let rhsCountdown)):
+                return lhsGesture == rhsGesture && lhsCountdown == rhsCountdown
             case (.error(let lhsError), .error(let rhsError)):
                 return lhsError.localizedDescription == rhsError.localizedDescription
             default:
@@ -99,6 +102,10 @@ class GestureCameraViewModel: ObservableObject {
         switch coordinatorState {
             case .detectingGesture:
                 gestureCameraViewState = .detectingGesture
+            case .gestureDetected(let gestureType, let countdown):
+                gestureCameraViewState = .gestureDetected(gestureType, countdown: countdown)
+            case .executingAction:
+                gestureCameraViewState = .executingAction
             case .commitSuccess:
                 gestureCameraViewState = .commitSuccess
             case .commitError(let error):
@@ -107,12 +114,6 @@ class GestureCameraViewModel: ObservableObject {
                 gestureCameraViewState = .shortcutSuccess
             case .committingData:
                 gestureCameraViewState = .committingData
-            case .heartDetected:
-                gestureCameraViewState = .heartDetected
-            case .peaceDetected:
-                gestureCameraViewState = .peaceDetected
-            case .thumbsUpDetected:
-                gestureCameraViewState = .thumbsUpDetected
             case .idle, .listeningForSnap, .resetting, .snapDetected:
                 break
         }
@@ -138,7 +139,7 @@ class GestureCameraViewModel: ObservableObject {
         switch state {
         case .detectingGesture:
             cameraUseCase.startCamera()
-        case .commitSuccess, .shortcutSuccess, .error, .commandResult, .committingData, .heartDetected, .thumbsUpDetected, .peaceDetected:
+        case .commitSuccess, .shortcutSuccess, .error, .commandResult, .committingData, .gestureDetected, .executingAction:
             cameraUseCase.stopCamera()
         case .waitingSnap, .unauthorized:
             break
@@ -163,28 +164,20 @@ class GestureCameraViewModel: ObservableObject {
 extension GestureCameraViewModel.GestureCameraViewState {
     var feedbackRepresentation: ViewStateRepresentation? {
         switch self {
-        case .heartDetected:
+        case .gestureDetected(let gestureType, let countdown):
             return ViewStateRepresentation(
-                title: "ハート検出！",
-                subtitle: "コミット中...",
-                iconName: "heart.fill",
-                color: .pink
-            )
-            
-        case .thumbsUpDetected:
-            return ViewStateRepresentation(
-                title: "サムズアップ検出！",
-                subtitle: "処理中...",
-                iconName: "hand.thumbsup.fill",
+                title: "\(gestureType.emoji) \(gestureType.displayName)検出",
+                subtitle: "\(countdown)秒後にアクションを実行します",
+                iconName: "timer",
                 color: .blue
             )
             
-        case .peaceDetected:
+        case .executingAction:
             return ViewStateRepresentation(
-                title: "ピース検出！",
-                subtitle: "処理中...",
-                iconName: "hand.raised.fingers.spread.fill",
-                color: .purple
+                title: "アクション実行中...",
+                subtitle: "お待ちください",
+                iconName: "gearshape.2",
+                color: .orange
             )
             
         case .committingData:

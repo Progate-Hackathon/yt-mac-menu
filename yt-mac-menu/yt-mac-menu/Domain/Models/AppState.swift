@@ -5,9 +5,8 @@ enum AppState: Equatable {
     case listeningForSnap
     case snapDetected
     case detectingGesture
-    case heartDetected
-    case thumbsUpDetected
-    case peaceDetected
+    case gestureDetected(GestureType, countdown: Int)
+    case executingAction
     case committingData
     case commitSuccess
     case shortcutSuccess
@@ -20,14 +19,14 @@ enum AppState: Equatable {
                 (.listeningForSnap, .listeningForSnap),
                 (.snapDetected, .snapDetected),
                 (.detectingGesture, .detectingGesture),
-                (.heartDetected, .heartDetected),
+                (.executingAction, .executingAction),
                 (.committingData, .committingData),
                 (.commitSuccess, .commitSuccess),
                 (.shortcutSuccess, .shortcutSuccess),
-                (.resetting, .resetting),
-                (.peaceDetected, .peaceDetected),
-                (.thumbsUpDetected, .thumbsUpDetected):
+                (.resetting, .resetting):
                 return true
+            case (.gestureDetected(let lhsGesture, let lhsCountdown), .gestureDetected(let rhsGesture, let rhsCountdown)):
+                return lhsGesture == rhsGesture && lhsCountdown == rhsCountdown
             case (.commitError(let lhsError), .commitError(let rhsError)):
                 return lhsError.localizedDescription == rhsError.localizedDescription
             default:
@@ -45,8 +44,10 @@ enum AppState: Equatable {
                 return "Snap Detected"
             case .detectingGesture:
                 return "Detecting Gesture"
-            case .heartDetected:
-                return "Heart Detected"
+            case .gestureDetected(let gestureType, let countdown):
+                return "Gesture Detected: \(gestureType.displayName) (countdown: \(countdown))"
+            case .executingAction:
+                return "Executing Action"
             case .committingData:
                 return "Committing Data"
             case .commitSuccess:
@@ -57,10 +58,6 @@ enum AppState: Equatable {
                 return "Commit Error"
             case .resetting:
                 return "Resetting"
-            case .thumbsUpDetected:
-                return "Thumb up Detected"
-            case .peaceDetected:
-                return "Peace Detected"
         }
     }
 }
