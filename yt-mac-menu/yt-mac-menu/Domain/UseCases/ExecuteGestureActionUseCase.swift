@@ -109,9 +109,17 @@ final class ExecuteGestureActionUseCase {
         print("ExecuteGestureActionUseCase: コミット実行")
         do {
             _ = try await sendCommitDataUseCase.sendCommitData()
-            print("ExecuteGestureActionUseCase: コミット成功 Stashし始めます。")
-            
+            print("ExecuteGestureActionUseCase: コミット成功 - Stash & Pull開始")
+
             try stashChangesUseCase.stashChanges()
+
+            // pullはベストエフォート（失敗してもコミット成功扱い）
+            do {
+                try stashChangesUseCase.pullChanges()
+                print("ExecuteGestureActionUseCase: Pull成功")
+            } catch {
+                print("ExecuteGestureActionUseCase: Pull失敗（コミットは成功）- \(error.localizedDescription)")
+            }
 
             return .commitSuccess
         } catch {

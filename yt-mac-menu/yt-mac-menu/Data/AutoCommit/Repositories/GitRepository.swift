@@ -88,6 +88,10 @@ class GitRepository: GitRepositoryProtocol {
         try executeGitCommand(arguments: ["stash", "push", "-m", "コミット前の変更"], at: projectPath)
     }
 
+    func pull(projectPath: String) throws {
+        try executeGitCommand(arguments: ["pull"], at: projectPath)
+    }
+
 
     // MARK: - Private Method
 
