@@ -19,7 +19,7 @@ struct yt_mac_menuApp: App {
     }
     
     var body: some Scene {
-        MenuBarExtra("yt-mac-menu", systemImage: "star.fill") {
+        MenuBarExtra{
             SettingsLink()
             Divider()
             Button("Quit") {
@@ -31,6 +31,9 @@ struct yt_mac_menuApp: App {
             })  {
               Text("データ削除")
             }
+        } label: {
+            Image("menubar_icon")
+                .renderingMode(.template)
         }
         .onChange(of: appViewModel.isCameraVisible) { _, newValue in
             if newValue {
