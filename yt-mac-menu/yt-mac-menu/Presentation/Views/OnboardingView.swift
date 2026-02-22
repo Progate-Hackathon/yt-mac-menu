@@ -24,7 +24,9 @@ struct OnboardingView: View {
                 case 2: step2SnapTrigger
                 case 3: step3SnapCalibration
                 case 4: step4HeartAction
-                case 5: step5Done
+                case 5: step5PeaceAction
+                case 6: step6ThumbsUpAction
+                case 7: step7Done
                 default: EmptyView()
                 }
             }
@@ -103,6 +105,8 @@ struct OnboardingView: View {
 
     @State private var showSnapPopover = false
     @State private var showHeartPopover = false
+    @State private var showPeacePopover = false
+    @State private var showThumbsUpPopover = false
 
     private var step2SnapTrigger: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -299,9 +303,185 @@ struct OnboardingView: View {
         }
     }
 
-    // MARK: - Step 5: 完了
+    // MARK: - Step 5: ピースアクション
 
-    private var step5Done: some View {
+    private var step5PeaceAction: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            stepHeader(icon: "hand.raised.fingers.spread.fill", title: "ピース検出アクション", subtitle: "✌️ジェスチャーを検出したときの動作を設定します")
+
+            HStack {
+                Text("アクション")
+                    .font(.subheadline).bold()
+                    .frame(width: 120, alignment: .leading)
+                Picker("", selection: $vm.peaceActionType) {
+                    ForEach(ActionType.allCases, id: \.self) { type in
+                        Text(type.displayName).tag(type)
+                    }
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .frame(width: 200)
+                .onChange(of: vm.peaceActionType) { _, newValue in vm.savePeaceActionType(newValue) }
+            }
+
+            if vm.peaceActionType == .shortcut {
+                HStack {
+                    Text("ショートカットキー")
+                        .font(.headline)
+                        .frame(width: 200, alignment: .leading)
+                    Button {
+                        showPeacePopover = true
+                        vm.onPeaceRecordingComplete = { showPeacePopover = false }
+                        vm.startRecordingPeace()
+                    } label: {
+                        Text(vm.peaceHotkey?.displayString ?? "未設定（クリックして設定）")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(vm.peaceHotkey == nil ? .secondary : .white)
+                            .frame(width: 200, height: 32)
+                            .background(RoundedRectangle(cornerRadius: 6).fill(.white.opacity(0.1)).shadow(color: .black.opacity(0.2), radius: 1, x: 0, y: 1))
+                    }
+                    .buttonStyle(.plain)
+                    .popover(isPresented: $showPeacePopover, arrowEdge: .top) {
+                        RecorderOverlaySectionView(
+                            showSuccess: $vm.showPeaceSuccess,
+                            tempModifiers: $vm.tempPeaceModifiers,
+                            tempKeyDisplay: $vm.tempPeaceKeyDisplay,
+                            currentHotkey: $vm.peacePreviewHotkey,
+                            stopRecording: vm.stopRecordingPeace
+                        )
+                    }
+                }
+            }
+
+            if vm.peaceActionType == .command {
+                HStack {
+                    Text("コマンド")
+                        .font(.subheadline).bold()
+                        .frame(width: 120, alignment: .leading)
+                    TextField("例: open -a Safari", text: $vm.peaceCommandString)
+                        .textFieldStyle(.plain)
+                        .padding(.horizontal, 8)
+                        .frame(width: 200, height: 32)
+                        .background(RoundedRectangle(cornerRadius: 6).fill(.white.opacity(0.1)))
+                        .onSubmit { vm.savePeaceCommand() }
+                        .onChange(of: vm.peaceCommandString) { _, _ in vm.savePeaceCommand() }
+                }
+            }
+
+            if vm.peaceActionType == .commit && (vm.githubToken.isEmpty || vm.projectPath.isEmpty) {
+                Label("コミットを使うには前のステップでGitHub設定が必要です", systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+
+            Spacer()
+
+            HStack {
+                Spacer()
+                Button("次へ") { vm.stopRecordingPeace(); showPeacePopover = false; vm.next() }
+                    .buttonStyle(.borderedProminent)
+                    .disabled({
+                        switch vm.peaceActionType {
+                        case .shortcut: return vm.peaceHotkey == nil
+                        case .command: return vm.peaceCommandString.trimmingCharacters(in: .whitespaces).isEmpty
+                        case .commit: return vm.githubToken.isEmpty || vm.projectPath.isEmpty
+                        }
+                    }())
+            }
+        }
+    }
+
+    // MARK: - Step 6: サムズアップアクション
+
+    private var step6ThumbsUpAction: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            stepHeader(icon: "hand.thumbsup.fill", title: "サムズアップ検出アクション", subtitle: "👍ジェスチャーを検出したときの動作を設定します")
+
+            HStack {
+                Text("アクション")
+                    .font(.subheadline).bold()
+                    .frame(width: 120, alignment: .leading)
+                Picker("", selection: $vm.thumbsUpActionType) {
+                    ForEach(ActionType.allCases, id: \.self) { type in
+                        Text(type.displayName).tag(type)
+                    }
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .frame(width: 200)
+                .onChange(of: vm.thumbsUpActionType) { _, newValue in vm.saveThumbsUpActionType(newValue) }
+            }
+
+            if vm.thumbsUpActionType == .shortcut {
+                HStack {
+                    Text("ショートカットキー")
+                        .font(.headline)
+                        .frame(width: 200, alignment: .leading)
+                    Button {
+                        showThumbsUpPopover = true
+                        vm.onThumbsUpRecordingComplete = { showThumbsUpPopover = false }
+                        vm.startRecordingThumbsUp()
+                    } label: {
+                        Text(vm.thumbsUpHotkey?.displayString ?? "未設定（クリックして設定）")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(vm.thumbsUpHotkey == nil ? .secondary : .white)
+                            .frame(width: 200, height: 32)
+                            .background(RoundedRectangle(cornerRadius: 6).fill(.white.opacity(0.1)).shadow(color: .black.opacity(0.2), radius: 1, x: 0, y: 1))
+                    }
+                    .buttonStyle(.plain)
+                    .popover(isPresented: $showThumbsUpPopover, arrowEdge: .top) {
+                        RecorderOverlaySectionView(
+                            showSuccess: $vm.showThumbsUpSuccess,
+                            tempModifiers: $vm.tempThumbsUpModifiers,
+                            tempKeyDisplay: $vm.tempThumbsUpKeyDisplay,
+                            currentHotkey: $vm.thumbsUpPreviewHotkey,
+                            stopRecording: vm.stopRecordingThumbsUp
+                        )
+                    }
+                }
+            }
+
+            if vm.thumbsUpActionType == .command {
+                HStack {
+                    Text("コマンド")
+                        .font(.subheadline).bold()
+                        .frame(width: 120, alignment: .leading)
+                    TextField("例: open -a Safari", text: $vm.thumbsUpCommandString)
+                        .textFieldStyle(.plain)
+                        .padding(.horizontal, 8)
+                        .frame(width: 200, height: 32)
+                        .background(RoundedRectangle(cornerRadius: 6).fill(.white.opacity(0.1)))
+                        .onSubmit { vm.saveThumbsUpCommand() }
+                        .onChange(of: vm.thumbsUpCommandString) { _, _ in vm.saveThumbsUpCommand() }
+                }
+            }
+
+            if vm.thumbsUpActionType == .commit && (vm.githubToken.isEmpty || vm.projectPath.isEmpty) {
+                Label("コミットを使うには前のステップでGitHub設定が必要です", systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+
+            Spacer()
+
+            HStack {
+                Spacer()
+                Button("次へ") { vm.stopRecordingThumbsUp(); showThumbsUpPopover = false; vm.next() }
+                    .buttonStyle(.borderedProminent)
+                    .disabled({
+                        switch vm.thumbsUpActionType {
+                        case .shortcut: return vm.thumbsUpHotkey == nil
+                        case .command: return vm.thumbsUpCommandString.trimmingCharacters(in: .whitespaces).isEmpty
+                        case .commit: return vm.githubToken.isEmpty || vm.projectPath.isEmpty
+                        }
+                    }())
+            }
+        }
+    }
+
+    // MARK: - Step 7: 完了
+
+    private var step7Done: some View {
         VStack(spacing: 20) {
             Image(systemName: "checkmark.seal.fill")
                 .font(.system(size: 52))

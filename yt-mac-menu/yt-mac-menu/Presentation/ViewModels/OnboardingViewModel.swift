@@ -6,7 +6,7 @@ final class OnboardingViewModel: ObservableObject {
 
     // MARK: - Navigation
     @Published var currentStep: Int = 0
-    let totalSteps = 6
+    let totalSteps = 8
 
     // MARK: - Step 1: GitHub設定
     @Published var githubToken: String = ""
@@ -39,11 +39,35 @@ final class OnboardingViewModel: ObservableObject {
     @Published var showHeartSuccess: Bool = false
     @Published var heartPreviewHotkey: Hotkey = Hotkey(modifiers: [], keyCode: 0, keyDisplay: "")
 
+    // MARK: - Step 5: ピースアクション（オンボーディング用・1アクション）
+    @Published var peaceActionType: ActionType = .shortcut
+    @Published var peaceCommandString: String = ""
+    @Published var peaceHotkey: Hotkey? = nil
+    @Published var isRecordingPeace: Bool = false
+    @Published var tempPeaceModifiers: NSEvent.ModifierFlags = []
+    @Published var tempPeaceKeyDisplay: String = ""
+    @Published var showPeaceSuccess: Bool = false
+    @Published var peacePreviewHotkey: Hotkey = Hotkey(modifiers: [], keyCode: 0, keyDisplay: "")
+
+    // MARK: - Step 6: サムズアップアクション（オンボーディング用・1アクション）
+    @Published var thumbsUpActionType: ActionType = .shortcut
+    @Published var thumbsUpCommandString: String = ""
+    @Published var thumbsUpHotkey: Hotkey? = nil
+    @Published var isRecordingThumbsUp: Bool = false
+    @Published var tempThumbsUpModifiers: NSEvent.ModifierFlags = []
+    @Published var tempThumbsUpKeyDisplay: String = ""
+    @Published var showThumbsUpSuccess: Bool = false
+    @Published var thumbsUpPreviewHotkey: Hotkey = Hotkey(modifiers: [], keyCode: 0, keyDisplay: "")
+
     var onSnapRecordingComplete: (() -> Void)?
     var onHeartRecordingComplete: (() -> Void)?
+    var onPeaceRecordingComplete: (() -> Void)?
+    var onThumbsUpRecordingComplete: (() -> Void)?
 
     private let snapMonitor = InputMonitorService()
     private let heartMonitor = InputMonitorService()
+    private let peaceMonitor = InputMonitorService()
+    private let thumbsUpMonitor = InputMonitorService()
     private let gestureRepository: GestureRepositoryProtocol = DependencyContainer.shared.gestureRepository
     private let appCoordinator = DependencyContainer.shared.appCoordinator
     private var calibrationCancellables = Set<AnyCancellable>()
@@ -54,6 +78,8 @@ final class OnboardingViewModel: ObservableObject {
         loadSavedValues()
         setupSnapMonitor()
         setupHeartMonitor()
+        setupPeaceMonitor()
+        setupThumbsUpMonitor()
     }
 
     private func loadSavedValues() {
@@ -64,13 +90,27 @@ final class OnboardingViewModel: ObservableObject {
         snapTriggerHotkey = savedSnap
         snapPreviewHotkey = savedSnap ?? Hotkey(modifiers: [], keyCode: 0, keyDisplay: "")
 
-        // ハートアクションは新形式（多アクション配列）の先頭から読み込む
+        // 各ジェスチャーアクションは新形式（多アクション配列）の先頭から読み込む
         if let heartActions = UserDefaultsManager.shared.get(key: .heartActions, type: [GestureAction].self),
            let first = heartActions.first {
             actionType = first.actionType
             commandString = first.commandString ?? ""
             heartHotkey = first.hotkey
             heartPreviewHotkey = first.hotkey ?? Hotkey(modifiers: [], keyCode: 0, keyDisplay: "")
+        }
+        if let peaceActions = UserDefaultsManager.shared.get(key: .peaceActions, type: [GestureAction].self),
+           let first = peaceActions.first {
+            peaceActionType = first.actionType
+            peaceCommandString = first.commandString ?? ""
+            peaceHotkey = first.hotkey
+            peacePreviewHotkey = first.hotkey ?? Hotkey(modifiers: [], keyCode: 0, keyDisplay: "")
+        }
+        if let thumbsUpActions = UserDefaultsManager.shared.get(key: .thumbsUpActions, type: [GestureAction].self),
+           let first = thumbsUpActions.first {
+            thumbsUpActionType = first.actionType
+            thumbsUpCommandString = first.commandString ?? ""
+            thumbsUpHotkey = first.hotkey
+            thumbsUpPreviewHotkey = first.hotkey ?? Hotkey(modifiers: [], keyCode: 0, keyDisplay: "")
         }
     }
 
@@ -137,6 +177,8 @@ final class OnboardingViewModel: ObservableObject {
 
     func startRecordingSnap() {
         if isRecordingHeart { stopRecordingHeart() }
+        if isRecordingPeace { stopRecordingPeace() }
+        if isRecordingThumbsUp { stopRecordingThumbsUp() }
         isRecordingSnap = true
         showSnapSuccess = false
         tempSnapModifiers = []
@@ -231,6 +273,8 @@ final class OnboardingViewModel: ObservableObject {
 
     func startRecordingHeart() {
         if isRecordingSnap { stopRecordingSnap() }
+        if isRecordingPeace { stopRecordingPeace() }
+        if isRecordingThumbsUp { stopRecordingThumbsUp() }
         isRecordingHeart = true
         showHeartSuccess = false
         tempHeartModifiers = []
@@ -285,6 +329,124 @@ final class OnboardingViewModel: ObservableObject {
         UserDefaultsManager.shared.save(key: .heartActions, value: [action])
     }
 
+    // MARK: - Step 5: ピースアクション
+
+    func startRecordingPeace() {
+        if isRecordingSnap { stopRecordingSnap() }
+        if isRecordingHeart { stopRecordingHeart() }
+        if isRecordingThumbsUp { stopRecordingThumbsUp() }
+        isRecordingPeace = true
+        showPeaceSuccess = false
+        tempPeaceModifiers = []
+        tempPeaceKeyDisplay = ""
+        peaceMonitor.startMonitoring()
+    }
+
+    func stopRecordingPeace() {
+        peaceMonitor.stopMonitorOnly()
+        isRecordingPeace = false
+    }
+
+    func savePeaceActionType(_ type: ActionType) {
+        peaceActionType = type
+        savePeaceAction()
+    }
+
+    func savePeaceCommand() {
+        savePeaceAction()
+    }
+
+    private func setupPeaceMonitor() {
+        peaceMonitor.onUpdate = { [weak self] modifiers, keyDisplay in
+            self?.tempPeaceModifiers = modifiers
+            self?.tempPeaceKeyDisplay = keyDisplay
+        }
+        peaceMonitor.onComplete = { [weak self] modifiers, keyCode, display in
+            guard let self else { return }
+            let hotkey = Hotkey(modifiers: modifiers, keyCode: keyCode, keyDisplay: display)
+            peaceHotkey = hotkey
+            peacePreviewHotkey = hotkey
+            savePeaceAction()
+            showPeaceSuccess = true
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                self?.stopRecordingPeace()
+                self?.showPeaceSuccess = false
+                self?.tempPeaceKeyDisplay = ""
+                self?.tempPeaceModifiers = []
+                self?.onPeaceRecordingComplete?()
+            }
+        }
+    }
+
+    private func savePeaceAction() {
+        let action = GestureAction(
+            actionType: peaceActionType,
+            hotkey: peaceHotkey,
+            commandString: peaceCommandString.isEmpty ? nil : peaceCommandString
+        )
+        UserDefaultsManager.shared.save(key: .peaceActions, value: [action])
+    }
+
+    // MARK: - Step 6: サムズアップアクション
+
+    func startRecordingThumbsUp() {
+        if isRecordingSnap { stopRecordingSnap() }
+        if isRecordingHeart { stopRecordingHeart() }
+        if isRecordingPeace { stopRecordingPeace() }
+        isRecordingThumbsUp = true
+        showThumbsUpSuccess = false
+        tempThumbsUpModifiers = []
+        tempThumbsUpKeyDisplay = ""
+        thumbsUpMonitor.startMonitoring()
+    }
+
+    func stopRecordingThumbsUp() {
+        thumbsUpMonitor.stopMonitorOnly()
+        isRecordingThumbsUp = false
+    }
+
+    func saveThumbsUpActionType(_ type: ActionType) {
+        thumbsUpActionType = type
+        saveThumbsUpAction()
+    }
+
+    func saveThumbsUpCommand() {
+        saveThumbsUpAction()
+    }
+
+    private func setupThumbsUpMonitor() {
+        thumbsUpMonitor.onUpdate = { [weak self] modifiers, keyDisplay in
+            self?.tempThumbsUpModifiers = modifiers
+            self?.tempThumbsUpKeyDisplay = keyDisplay
+        }
+        thumbsUpMonitor.onComplete = { [weak self] modifiers, keyCode, display in
+            guard let self else { return }
+            let hotkey = Hotkey(modifiers: modifiers, keyCode: keyCode, keyDisplay: display)
+            thumbsUpHotkey = hotkey
+            thumbsUpPreviewHotkey = hotkey
+            saveThumbsUpAction()
+            showThumbsUpSuccess = true
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                self?.stopRecordingThumbsUp()
+                self?.showThumbsUpSuccess = false
+                self?.tempThumbsUpKeyDisplay = ""
+                self?.tempThumbsUpModifiers = []
+                self?.onThumbsUpRecordingComplete?()
+            }
+        }
+    }
+
+    private func saveThumbsUpAction() {
+        let action = GestureAction(
+            actionType: thumbsUpActionType,
+            hotkey: thumbsUpHotkey,
+            commandString: thumbsUpCommandString.isEmpty ? nil : thumbsUpCommandString
+        )
+        UserDefaultsManager.shared.save(key: .thumbsUpActions, value: [action])
+    }
+
     // MARK: - Completion
 
     func complete() {
@@ -295,10 +457,14 @@ final class OnboardingViewModel: ObservableObject {
         let coord = appCoordinator
         let s = snapMonitor
         let h = heartMonitor
+        let p = peaceMonitor
+        let t = thumbsUpMonitor
         DispatchQueue.main.async {
             coord.endCalibration()
             s.cleanup()
             h.cleanup()
+            p.cleanup()
+            t.cleanup()
         }
     }
 }
