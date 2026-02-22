@@ -92,8 +92,9 @@ class AppCoordinator: ObservableObject {
                 self?.transition(to: .resetting)
                 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    self?.transition(to: .idle)
+                    self?.transition(to: .listeningForSnap)
                     self?.gestureRepository.sendCommand(.disableGesture)
+                    self?.gestureRepository.sendCommand(.enableSnap)
                 }
             }
             
@@ -374,7 +375,8 @@ class AppCoordinator: ObservableObject {
             self.isCameraVisible = false
             
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                self.transition(to: .idle)
+                self.transition(to: .listeningForSnap)
+                self.gestureRepository.sendCommand(.enableSnap)
             }
         }
         
