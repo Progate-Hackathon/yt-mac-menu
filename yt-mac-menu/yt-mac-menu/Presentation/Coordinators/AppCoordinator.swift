@@ -340,15 +340,18 @@ class AppCoordinator: ObservableObject {
                 return
             }
             
+            let hasCommitSuccess = summary.results.contains { if case .commitSuccess = $0 { return true }; return false }
+            let successState: AppState = hasCommitSuccess ? .commitSuccess : .shortcutSuccess
+            
             if summary.allSucceeded {
                 print("AppCoordinator: 全アクション成功 - \(summary.summaryMessage)")
-                self.transition(to: .commitSuccess)
+                self.transition(to: successState)
                 self.scheduleReset()
             } else {
                 // 一部失敗でも成功があればsuccess扱いで自動リセット
                 if summary.successCount > 0 {
                     print("AppCoordinator: 一部成功 - \(summary.summaryMessage)")
-                    self.transition(to: .commitSuccess)
+                    self.transition(to: successState)
                     self.scheduleReset()
                 } else {
                     // 全失敗の場合のみエラー表示

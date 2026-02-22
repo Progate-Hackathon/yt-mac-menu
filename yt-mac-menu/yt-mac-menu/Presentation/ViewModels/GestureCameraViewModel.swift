@@ -242,7 +242,7 @@ extension GestureCameraViewModel.GestureCameraViewState {
             
         case .shortcutSuccess:
             return ViewStateRepresentation(
-                title: "ショートカット実行完了！",
+                title: "アクション完了！",
                 subtitle: "3秒後に閉じます...",
                 iconName: "checkmark.circle.fill",
                 color: .green
