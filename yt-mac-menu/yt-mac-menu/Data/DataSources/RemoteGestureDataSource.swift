@@ -41,6 +41,9 @@ class RemoteGestureDataSource {
             let type: String?
             let count: Int?
             let status: String?
+            let phase: String?
+            let collected: Int?
+            let target: Int?
         }
         
         guard let decoded = try? JSONDecoder().decode(ServerEvent.self, from: data) else {
@@ -112,6 +115,21 @@ class RemoteGestureDataSource {
             print("✅ 手の数受信: \(decoded.count ?? -1)")
             if let count = decoded.count {
                 eventSubject.send(.handCount(count))
+            }
+            
+        case .snapCalibration:
+            guard let phase = decoded.phase else {
+                print("⚠️ snap_calibration event missing phase field")
+                return
+            }
+            if phase == "completed" {
+                print("✅ スナップキャリブレーション完了")
+                eventSubject.send(.snapCalibrationCompleted)
+            } else if phase == "progress" {
+                let collected = decoded.collected ?? 0
+                let target = decoded.target ?? 15
+                print("📊 スナップキャリブレーション進捗: \(collected)/\(target)")
+                eventSubject.send(.snapCalibrationProgress(collected: collected, target: target))
             }
         }
     }

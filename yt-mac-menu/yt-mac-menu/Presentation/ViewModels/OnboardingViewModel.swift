@@ -6,7 +6,7 @@ final class OnboardingViewModel: ObservableObject {
 
     // MARK: - Step management
     @Published var currentStep: Int = 0
-    let totalSteps = 5
+    let totalSteps = 6
 
     // MARK: - Step 2: GitHub設定
     @Published var githubToken: String = ""
@@ -22,7 +22,16 @@ final class OnboardingViewModel: ObservableObject {
     @Published var showSnapSuccess: Bool = false
     @Published var snapPreviewHotkey: Hotkey = Hotkey(modifiers: [], keyCode: 0, keyDisplay: "")
 
-    // MARK: - Step 3: スナップ検知トリガー（エラー）
+    // MARK: - Step 3: スナップキャリブレーション
+    @Published var calibrationCollected: Int = 0
+    @Published var calibrationTarget: Int = 15
+    @Published var calibrationCompleted: Bool = false
+    @Published var isCalibrating: Bool = false
+
+    private let gestureRepository: GestureRepositoryProtocol = DependencyContainer.shared.gestureRepository
+    private var calibrationCancellables = Set<AnyCancellable>()
+
+    // MARK: - Step 4: スナップ検知トリガー（エラー）
     @Published var snapTriggerError: String? = nil
 
     // MARK: - Step 4: ハートアクション
@@ -37,6 +46,7 @@ final class OnboardingViewModel: ObservableObject {
 
     private let snapMonitor = InputMonitorService()
     private let heartMonitor = InputMonitorService()
+    private let appCoordinator = DependencyContainer.shared.appCoordinator
 
     var onSnapRecordingComplete: (() -> Void)?
     var onHeartRecordingComplete: (() -> Void)?
@@ -230,10 +240,51 @@ final class OnboardingViewModel: ObservableObject {
         UserDefaultsManager.shared.save(key: .onboardingCompleted, value: true)
     }
 
+    // MARK: - Step 3: Snap Calibration
+
+    func startCalibration() {
+        guard !isCalibrating else { return }
+        calibrationCollected = 0
+        calibrationCompleted = false
+        isCalibrating = true
+        calibrationCancellables.removeAll()
+
+        gestureRepository.eventPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] event in
+                guard let self else { return }
+                switch event {
+                case .snapCalibrationProgress(let collected, let target):
+                    self.calibrationCollected = collected
+                    self.calibrationTarget = target
+                case .snapCalibrationCompleted:
+                    self.calibrationCollected = self.calibrationTarget
+                    self.calibrationCompleted = true
+                    self.isCalibrating = false
+                    self.appCoordinator.endCalibration()
+                    self.calibrationCancellables.removeAll()
+                default:
+                    break
+                }
+            }
+            .store(in: &calibrationCancellables)
+
+        appCoordinator.beginCalibration()
+        gestureRepository.sendCommand(.calibrateSnap)
+    }
+
+    func stopCalibrationSubscription() {
+        calibrationCancellables.removeAll()
+        isCalibrating = false
+        appCoordinator.endCalibration()
+    }
+
     deinit {
+        let coord = appCoordinator
         let s = snapMonitor
         let h = heartMonitor
         DispatchQueue.main.async {
+            coord.endCalibration()
             s.cleanup()
             h.cleanup()
         }

@@ -29,7 +29,7 @@ class DependencyContainer {
     }()
     
     
-    private lazy var gestureRepository: GestureRepositoryProtocol = {
+    private(set) lazy var gestureRepository: GestureRepositoryProtocol = {
         return GestureRepository(
             webSocketClient: webSocketClient,
             remoteDataSource: remoteGestureDataSource
