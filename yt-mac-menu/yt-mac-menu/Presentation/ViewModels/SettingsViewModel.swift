@@ -53,8 +53,11 @@ final class SettingsViewModel: ObservableObject {
 
         errorMessage = nil
         hasUnsavedChanges = false
-        settingsSaved = true  // 保存完了を通知
+        settingsSaved = true
         print("DEBUG: Settings saved successfully")
+
+        // プロジェクトパスが変わった可能性があるのでブランチを再取得する
+        await fetchBranches()
     }
     
     // MARK: - Actions (Branch Fetching)
