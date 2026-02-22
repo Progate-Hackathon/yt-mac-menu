@@ -14,6 +14,13 @@ class FetchBranchesUseCase {
         self.gitRepository = gitRepository
     }
     
+    func getCurrentBranch() throws -> String {
+        guard let projectPath = UserDefaultsManager.shared.get(key: .projectFolderPath, type: String.self) else {
+            throw FetchBranchesUseCaseError.projectPathNotFound
+        }
+        return try gitRepository.getCurrentBranch(projectPath: projectPath)
+    }
+
     func fetchRemoteBranches() throws {
         guard let projectPath = UserDefaultsManager.shared.get(key: .projectFolderPath, type: String.self) else {
             print("FetchBranchesUseCase: Project Pathが見つかりません。")

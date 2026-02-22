@@ -38,6 +38,24 @@ struct SettingsView: View {
                         Text("高度な設定")
                             .font(.headline)
                         
+                        if !settingsViewModel.currentBranch.isEmpty {
+                            HStack(spacing: 8) {
+                                Image(systemName: "arrow.triangle.branch")
+                                    .foregroundStyle(.secondary)
+                                Text("現在のブランチ")
+                                    .font(.subheadline)
+                                Spacer()
+                                Text(settingsViewModel.currentBranch)
+                                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(Color.accentColor.opacity(0.15))
+                                    .foregroundStyle(Color.accentColor)
+                                    .clipShape(Capsule())
+                            }
+                            .padding(.horizontal)
+                        }
+
                         BaseBranchSectionView(
                             baseBranch: $settingsViewModel.baseBranch,
                             availableBranches: settingsViewModel.availableBranches,

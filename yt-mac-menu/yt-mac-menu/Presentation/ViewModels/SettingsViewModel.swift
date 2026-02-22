@@ -13,6 +13,7 @@ final class SettingsViewModel: ObservableObject {
     
     // Branch fetching state
     @Published var availableBranches: [String] = []
+    @Published var currentBranch: String = ""
     @Published var isFetchingBranches: Bool = false
     @Published var branchFetchError: FetchBranchesUseCaseError?
 
@@ -73,6 +74,9 @@ final class SettingsViewModel: ObservableObject {
             
             // Then fetch local branches (includes synced remote branches)
             availableBranches = try fetchBranchesUseCase.getBranches()
+            
+            // Fetch current HEAD branch (non-fatal)
+            currentBranch = (try? fetchBranchesUseCase.getCurrentBranch()) ?? ""
             
             // Ensure current baseBranch is in the list
             if !baseBranch.isEmpty && !availableBranches.contains(baseBranch) {
