@@ -80,17 +80,26 @@ class GitRepository: GitRepositoryProtocol {
     
     
     func getRemoteOriginURL(projectPath: String) throws -> String {
-        return try executeGitCommand(arguments: ["config", "--get", "remote.origin.url"], at: projectPath)
+        let remote = try resolveRemoteName(projectPath: projectPath)
+        return try executeGitCommand(arguments: ["config", "--get", "remote.\(remote).url"], at: projectPath)
     }
-    
-    
-    
+
     func stashChanges(projectPath: String) throws {
         try executeGitCommand(arguments: ["stash", "push", "-m", "コミット前の変更"], at: projectPath)
     }
-    
-    
+
+
     // MARK: - Private Method
+
+    /// リモート名を解決する。"origin" が存在すればそれを返し、なければ最初のリモートを返す
+    private func resolveRemoteName(projectPath: String) throws -> String {
+        let output = try executeGitCommand(arguments: ["remote"], at: projectPath)
+        let remotes = output.split(separator: "\n").map { String($0).trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        guard !remotes.isEmpty else {
+            throw GitError.commandFailed("リモートリポジトリが設定されていません")
+        }
+        return remotes.contains("origin") ? "origin" : remotes[0]
+    }
     
     @discardableResult
     private func executeGitCommand(arguments: [String], at path: String) throws -> String {
