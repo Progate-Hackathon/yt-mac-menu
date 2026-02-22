@@ -21,6 +21,13 @@ class StashChangesUseCase {
         }
         try gitRepository.stashChanges(projectPath: projectPath)
     }
+
+    func pullChanges() throws {
+        guard let projectPath = UserDefaultsManager.shared.get(key: .projectFolderPath, type: String.self) else {
+            throw StashChangesUseCaseError.projectPathNotFound
+        }
+        try gitRepository.pull(projectPath: projectPath)
+    }
 }
 
 
