@@ -38,7 +38,7 @@ struct GestureCameraView: View {
                         
                         // カウントダウンオーバーレイ
                         if let countdown = gestureCameraViewModel.currentCountdown {
-                            CountdownOverlayView(countdown: countdown, totalSeconds: 3)
+                            CountdownOverlayView(countdown: countdown, totalSeconds: 1.5)
                                 .transition(.scale.combined(with: .opacity))
                                 .animation(.easeInOut(duration: 0.3), value: countdown.secondsRemaining)
                         }
@@ -218,10 +218,10 @@ struct CameraPreviewView: NSViewRepresentable {
 
 struct CountdownOverlayView: View {
     let countdown: GestureCountdown
-    let totalSeconds: Int   // ← 追加
+    let totalSeconds: Double
     
     private var progress: Double {
-        Double(countdown.secondsRemaining) / Double(totalSeconds)
+        countdown.secondsRemaining / totalSeconds
     }
     
     var body: some View {
@@ -258,7 +258,7 @@ struct CountdownOverlayView: View {
                 .font(.title3.bold())
                 .foregroundColor(.white)
             
-            Text("\(countdown.secondsRemaining)秒後にアクションを実行します")
+            Text(String(format: "%.1f", countdown.secondsRemaining) + "秒後にアクションを実行します")
                 .font(.subheadline)
                 .foregroundColor(.white.opacity(0.8))
         }
@@ -361,5 +361,5 @@ struct PermissionDeniedView: View {
 }
 
 #Preview {
-    CountdownOverlayView(countdown: GestureCountdown(gestureType: .heart, secondsRemaining: 1), totalSeconds: 4)
+    CountdownOverlayView(countdown: GestureCountdown(gestureType: .heart, secondsRemaining: 0.75), totalSeconds: 1.5)
 }

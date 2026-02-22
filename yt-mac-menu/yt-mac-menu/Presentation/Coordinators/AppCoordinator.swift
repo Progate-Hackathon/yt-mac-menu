@@ -5,7 +5,7 @@ import Combine
 
 struct GestureCountdown {
     let gestureType: GestureType
-    let secondsRemaining: Int
+    let secondsRemaining: Double
 }
 
 // MARK: - App Coordinator
@@ -277,20 +277,20 @@ class AppCoordinator: ObservableObject {
         cancelCountdown()
         
         currentGestureType = gestureType
-        var countdown = 3
+        var ticks = 15  // 1.5s × 10 ticks
         // 状態遷移なし - オーバーレイで表示
-        activeCountdown = GestureCountdown(gestureType: gestureType, secondsRemaining: countdown)
+        activeCountdown = GestureCountdown(gestureType: gestureType, secondsRemaining: Double(ticks) / 10.0)
         
-        countdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
+        countdownTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] timer in
             guard let self = self else {
                 timer.invalidate()
                 return
             }
             
-            countdown -= 1
+            ticks -= 1
             
-            if countdown > 0 {
-                self.activeCountdown = GestureCountdown(gestureType: gestureType, secondsRemaining: countdown)
+            if ticks > 0 {
+                self.activeCountdown = GestureCountdown(gestureType: gestureType, secondsRemaining: Double(ticks) / 10.0)
             } else {
                 timer.invalidate()
                 self.countdownTimer = nil
