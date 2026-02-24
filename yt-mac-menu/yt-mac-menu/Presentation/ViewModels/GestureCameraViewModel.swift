@@ -1,0 +1,256 @@
+import AVFoundation
+import SwiftUI
+import Combine
+
+// MARK: - View State Representation
+
+struct ViewStateRepresentation {
+    let title: String
+    let subtitle: String
+    let iconName: String
+    let color: Color
+}
+
+// MARK: - ViewModel
+
+class GestureCameraViewModel: ObservableObject {
+    @Published var gestureCameraViewState: GestureCameraViewState = .waitingSnap {
+        didSet { handleStateChange(gestureCameraViewState) }
+    }
+
+    @Published var detectedHandCount: Int = 0
+    @Published var currentCountdown: GestureCountdown?
+    
+    let cameraUseCase: CameraManagementUseCase
+    
+    var session: AVCaptureSession {
+        cameraUseCase.session
+    }
+    
+    private let gestureUseCase: GestureDetectionUseCase
+    private var cancellables = Set<AnyCancellable>()
+    private var isCameraRunning = false  // カメラ状態を追跡
+    
+    enum GestureCameraViewState: Equatable {
+        case waitingSnap
+        case detectingGesture
+        case committingData
+        case gestureDetected(GestureType, countdown: Int)
+        case executingAction
+        case unauthorized
+        case commitSuccess
+        case shortcutSuccess
+        case commandResult(ShellResult)
+        case error(Error)
+        
+        var stateDescription: String {
+            switch self {
+            case .waitingSnap: return "waitingSnap"
+            case .detectingGesture: return "detectingGesture"
+            case .committingData: return "committingData"
+            case .gestureDetected(let type, let countdown): return "gestureDetected(\(type.displayName), \(countdown))"
+            case .executingAction: return "executingAction"
+            case .unauthorized: return "unauthorized"
+            case .commitSuccess: return "commitSuccess"
+            case .shortcutSuccess: return "shortcutSuccess"
+            case .commandResult: return "commandResult"
+            case .error: return "error"
+            }
+        }
+        
+        static func == (lhs: GestureCameraViewState, rhs: GestureCameraViewState) -> Bool {
+            switch (lhs, rhs) {
+            case (.waitingSnap, .waitingSnap),
+                 (.detectingGesture, .detectingGesture),
+                 (.committingData, .committingData),
+                 (.executingAction, .executingAction),
+                 (.commitSuccess, .commitSuccess),
+                 (.unauthorized, .unauthorized),
+                 (.commandResult, .commandResult),
+                 (.shortcutSuccess, .shortcutSuccess):
+                return true
+            case (.gestureDetected(let lhsGesture, let lhsCountdown), .gestureDetected(let rhsGesture, let rhsCountdown)):
+                return lhsGesture == rhsGesture && lhsCountdown == rhsCountdown
+            case (.error(let lhsError), .error(let rhsError)):
+                return lhsError.localizedDescription == rhsError.localizedDescription
+            default:
+                return false
+            }
+        }
+    }
+    
+    init(
+        cameraUseCase: CameraManagementUseCase,
+        gestureUseCase: GestureDetectionUseCase
+    ) {
+        self.cameraUseCase = cameraUseCase
+        self.gestureUseCase = gestureUseCase
+        print("GestureCameraViewModel initialized")
+        checkPermission()
+        setupBindings()
+        setupCoordinatorBinding()
+    }
+    
+    private func setupCoordinatorBinding() {
+        let coordinator = DependencyContainer.shared.appCoordinator
+
+        // AppCoordinatorの状態を監視してappStateを更新
+        coordinator.$currentState
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] coordinatorState in
+                self?.updateAppStatus(from: coordinatorState)
+            }
+            .store(in: &cancellables)
+
+        // コマンド結果を監視して結果表示状態に遷移、nil受信時はappStateをリセット
+        coordinator.$commandResult
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] result in
+                guard let self else { return }
+                if let result {
+                    gestureCameraViewState = .commandResult(result)
+                } else if case .commandResult = gestureCameraViewState {
+                    gestureCameraViewState = .waitingSnap
+                }
+            }
+            .store(in: &cancellables)
+        
+        // カウントダウン状態を監視
+        coordinator.$activeCountdown
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] countdown in
+                self?.currentCountdown = countdown
+            }
+            .store(in: &cancellables)
+    }
+    
+    private func updateAppStatus(from coordinatorState: AppState) {
+        // コマンド結果表示中は coordinatorState による上書きをしない
+        if case .commandResult = gestureCameraViewState { return }
+
+        switch coordinatorState {
+            case .detectingGesture:
+                gestureCameraViewState = .detectingGesture
+            case .gestureDetected(let gestureType, let countdown):
+                gestureCameraViewState = .gestureDetected(gestureType, countdown: countdown)
+            case .executingAction:
+                gestureCameraViewState = .executingAction
+            case .commitSuccess:
+                gestureCameraViewState = .commitSuccess
+            case .commitError(let error):
+                gestureCameraViewState = .error(error)
+            case .shortcutSuccess:
+                gestureCameraViewState = .shortcutSuccess
+            case .committingData:
+                gestureCameraViewState = .committingData
+            case .idle, .listeningForSnap, .resetting, .snapDetected:
+                break
+        }
+    }
+    
+    private func setupBindings() {
+        gestureUseCase.gestureEventPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] event in
+                guard let self = self else { return }
+                switch event {
+                    case .handCount(let detectedHandCount):
+                        self.detectedHandCount = detectedHandCount
+                    default:
+                        break
+                }
+            }
+            .store(in: &cancellables)
+    }
+    
+
+    private func handleStateChange(_ state: GestureCameraViewState) {
+        print("🎥 handleStateChange: \(state.stateDescription), isCameraRunning: \(isCameraRunning)")
+        
+        switch state {
+        case .detectingGesture, .gestureDetected:
+            // カメラはカウントダウン中も継続（ユーザーが自分の手を見れるように）
+            // 既に起動中の場合は再起動しない（AVCaptureSessionエラー回避）
+            if !isCameraRunning {
+                print("📹 カメラを起動します (was off)")
+                cameraUseCase.startCamera()
+                isCameraRunning = true
+            } else {
+                print("📹 カメラは既に起動中 (no action)")
+            }
+        case .executingAction, .commitSuccess, .shortcutSuccess, .error, .commandResult, .committingData:
+            if isCameraRunning {
+                print("📹 カメラを停止します (was on)")
+                cameraUseCase.stopCamera()
+                isCameraRunning = false
+            } else {
+                print("📹 カメラは既に停止中 (no action)")
+            }
+        case .waitingSnap, .unauthorized:
+            break
+        }
+    }
+    
+    private func checkPermission() {
+        // 既に権限があるかどうかだけチェック（リクエストは AppCoordinator で行う）
+        if cameraUseCase.checkPermissionStatus() {
+            cameraUseCase.setupCamera()
+            gestureCameraViewState = .detectingGesture
+        } else {
+            // 権限がない場合は unauthorized 状態にする（ガイドUIが表示される）
+            gestureCameraViewState = .unauthorized
+        }
+    }
+}
+
+// MARK: - View State Representation Extension
+
+extension GestureCameraViewModel.GestureCameraViewState {
+    var feedbackRepresentation: ViewStateRepresentation? {
+        switch self {
+        case .gestureDetected(let gestureType, let countdown):
+            return ViewStateRepresentation(
+                title: "\(gestureType.emoji) \(gestureType.displayName)検出",
+                subtitle: "\(countdown)秒後にアクションを実行します",
+                iconName: "timer",
+                color: .blue
+            )
+            
+        case .executingAction:
+            return ViewStateRepresentation(
+                title: "アクション実行中...",
+                subtitle: "お待ちください",
+                iconName: "gearshape.2",
+                color: .orange
+            )
+            
+        case .committingData:
+            return ViewStateRepresentation(
+                title: "データ送信中",
+                subtitle: "しばらくお待ちください...",
+                iconName: "arrow.up.circle.fill",
+                color: .orange
+            )
+            
+        case .commitSuccess:
+            return ViewStateRepresentation(
+                title: "コミット完了！",
+                subtitle: "3秒後に閉じます...",
+                iconName: "checkmark.circle.fill",
+                color: .green
+            )
+            
+        case .shortcutSuccess:
+            return ViewStateRepresentation(
+                title: "アクション完了！",
+                subtitle: "3秒後に閉じます...",
+                iconName: "checkmark.circle.fill",
+                color: .green
+            )
+            
+        // Custom UI states - return nil
+        case .unauthorized, .waitingSnap, .detectingGesture, .commandResult, .error:
+            return nil
+        }
+    }
+}
